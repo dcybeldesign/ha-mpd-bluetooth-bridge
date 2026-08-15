@@ -1,0 +1,78 @@
+# ============================================================
+# config.yaml — Fichier de description de l'add-on Home Assistant
+# ============================================================
+# Ce fichier ne contient PAS de logique : c'est une fiche d'identité
+# que le Supervisor HAOS lit pour savoir comment construire et lancer
+# le conteneur, et quelles permissions système lui accorder.
+
+name: "MPD JBL Bridge"
+# Nom affiché dans l'interface Home Assistant (Paramètres > Applications).
+
+version: "1.0.0"
+# Version de l'add-on. À incrémenter à chaque modification si on veut
+# que le Supervisor propose une "mise à jour" plus tard.
+
+slug: "mpd_jbl_bridge"
+# Identifiant technique unique de l'add-on (utilisé dans les URLs internes,
+# les noms de conteneur Docker, etc.). Pas d'espace, pas d'accent.
+
+description: "Serveur MPD qui diffuse l'audio vers l'enceinte Bluetooth JBL Flip 3, exposé à Music Assistant via le protocole MPD."
+
+url: "https://github.com/"
+# Optionnel : lien vers la doc/le dépôt. Laissé générique pour l'instant.
+
+arch:
+  - aarch64
+  # Ton Raspberry Pi 4 tourne en 64 bits (aarch64) sous HAOS.
+  # On ne déclare QUE cette architecture pour l'instant : pas besoin
+  # de armv7/amd64 puisque l'add-on est fait sur-mesure pour ton Pi.
+
+startup: services
+# Indique au Supervisor que cet add-on doit démarrer après les services
+# de base (réseau, dbus, audio) mais peut tourner en tâche de fond en continu.
+
+boot: auto
+# Démarre automatiquement l'add-on en même temps que Home Assistant
+# (pratique : pas besoin de le relancer à la main après un redémarrage du Pi).
+
+init: false
+# Désactive le système d'init par défaut du conteneur (S6-overlay minimal) :
+# c'est NOTRE script run.sh qui pilotera tout, pas un init générique.
+
+# --- Accès système nécessaires ---
+# C'est la partie la plus importante : sans ces lignes, le conteneur est
+# isolé et ne peut ni jouer du son, ni piloter le Bluetooth du Pi.
+
+audio: true
+# Donne accès au serveur audio partagé du Supervisor (le même PulseAudio
+# qu'on a utilisé avec `paplay` en SSH). Sans ça, MPD n'aurait aucune
+# sortie son disponible.
+
+host_dbus: true
+# Donne accès au bus D-Bus du système hôte. C'est INDISPENSABLE pour
+# piloter bluetoothd (reconnexion automatique à la JBL) depuis le
+# conteneur, exactement comme `bluetoothctl` le fait depuis le shell SSH.
+
+# --- Réseau ---
+ports:
+  6600/tcp: 6600
+  # MPD écoute par défaut sur le port 6600 (protocole texte MPD).
+  # On l'expose tel quel pour que Music Assistant (fournisseur "MPD Players")
+  # puisse s'y connecter en indiquant simplement l'IP du Pi + ce port.
+
+ports_description:
+  6600/tcp: "Port du protocole MPD, utilisé par Music Assistant pour piloter la lecture."
+
+# --- Options configurables depuis l'interface Home Assistant ---
+# Ça évite de coder en dur l'adresse MAC de la JBL dans le script :
+# si un jour tu changes d'enceinte, tu modifies juste ce champ dans
+# l'interface, sans toucher au code.
+
+options:
+  bluetooth_mac: "FC:A8:9A:CC:54:23"
+  # Valeur par défaut = l'adresse MAC de ta JBL Flip 3, déjà appairée.
+
+schema:
+  bluetooth_mac: "str"
+  # Déclare le type du champ ci-dessus (chaîne de caractères), pour que
+  # l'interface HA affiche un champ de saisie texte validé correctement.
