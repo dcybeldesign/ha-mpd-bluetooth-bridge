@@ -1,0 +1,18 @@
+configuration:
+  bluetooth_mac:
+    name: Bluetooth MAC address
+    description: >-
+      MAC address of the Bluetooth speaker to connect to (format
+      AA:BB:CC:DD:EE:FF). The speaker must already be paired with the
+      host beforehand — this add-on only handles connecting/reconnecting,
+      not the initial pairing. Required.
+  speaker_name:
+    name: Speaker name
+    description: >-
+      Cosmetic label shown for this output inside MPD. Does not affect
+      functionality.
+  reconnect_interval:
+    name: Reconnect check interval (seconds)
+    description: >-
+      How often the add-on checks whether the speaker is still connected,
+      and reconnects it automatically if not (10-300 seconds).

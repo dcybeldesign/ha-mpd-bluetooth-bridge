@@ -6,10 +6,13 @@
 # exécute chaque instruction dans l'ordre pour construire l'image.
 
 ARG BUILD_FROM=homeassistant/aarch64-base:3.18
-# Image de base officielle des add-ons Home Assistant, pour l'architecture
-# aarch64 (celle de ton Raspberry Pi 4 en 64 bits). Elle contient déjà
-# Alpine Linux + "bashio", un petit utilitaire shell qui permet de lire
-# facilement les options définies dans config.yaml (ex: bluetooth_mac).
+# Valeur par défaut utilisée uniquement pour un build manuel/local hors
+# Supervisor. En conditions normales, le Supervisor HAOS choisit lui-même
+# la bonne image parmi celles listées dans build.yaml, selon l'architecture
+# réelle de l'hôte (Raspberry Pi, PC/NUC amd64, etc.) — voir build.yaml.
+# Cette image de base contient déjà Alpine Linux + "bashio", un petit
+# utilitaire shell qui permet de lire facilement les options définies
+# dans config.yaml (ex: bluetooth_mac).
 FROM ${BUILD_FROM}
 
 # --- Installation des paquets nécessaires ---
@@ -20,16 +23,16 @@ RUN apk add --no-cache \
         pulseaudio-utils \
         # Fournit "pactl"/"paplay" : nécessaire pour que MPD puisse parler
         # au serveur audio partagé du Supervisor (celui qui voit le sink
-        # Bluetooth de la JBL).
+        # Bluetooth de l'enceinte).
         bluez \
         # Fournit "bluetoothctl" (le paquet "bluez-deprecated" ne contient
         # QUE les anciens outils type hcitool/hciconfig, pas bluetoothctl —
         # erreur détectée après un premier essai raté) : utilisé par notre
-        # script pour connecter/reconnecter automatiquement la JBL si elle
-        # se met en veille.
+        # script pour connecter/reconnecter automatiquement l'enceinte si
+        # elle se met en veille.
         gettext
         # Fournit "envsubst" : petit outil pour remplacer des variables
-        # (ex: {{BLUETOOTH_SINK}}) dans notre fichier mpd.conf.template
+        # (ex: ${BLUETOOTH_SINK}) dans notre fichier mpd.conf.template
         # au démarrage, sans dépendance lourde comme Python.
 
 # --- Copie de nos fichiers dans l'image ---

@@ -1,12 +1,12 @@
 # ============================================================
 # mpd.conf.template — Modèle de configuration MPD
 # ============================================================
-# Fichier presque normal de config MPD, SAUF la ligne "sink" plus bas
-# qui contient {{BLUETOOTH_SINK}} : ce texte est remplacé par run.sh
-# au démarrage (via envsubst) par le vrai nom du sink PulseAudio de
-# la JBL, calculé à partir de l'adresse MAC choisie dans les options
-# de l'add-on. On ne peut pas écrire cette valeur en dur ici puisque
-# l'adresse MAC est configurable par l'utilisateur.
+# Fichier presque normal de config MPD, SAUF les valeurs ${BLUETOOTH_SINK}
+# et ${SPEAKER_NAME} plus bas : ce texte est remplacé par run.sh au
+# démarrage (via envsubst) par les vraies valeurs calculées/saisies dans
+# les options de l'add-on. On ne peut pas les écrire en dur ici puisque
+# l'adresse MAC (et le nom de l'enceinte) sont configurables par
+# l'utilisateur — chaque installation a sa propre enceinte.
 
 playlist_directory  "/var/lib/mpd/playlists"
 # Pas de "music_directory" ni de "db_file" : Music Assistant envoie
@@ -29,15 +29,17 @@ port                "6600"
 # sinon Music Assistant ne pourra pas se connecter.
 
 # --- Pas de mot de passe ---
-# L'add-on n'est accessible que depuis le réseau local du Pi (pas exposé
-# sur Internet), donc pas d'authentification MPD pour rester simple.
-# À reconsidérer si jamais le Pi devient accessible depuis l'extérieur.
+# L'add-on n'est accessible que depuis le réseau local (pas exposé sur
+# Internet par défaut), donc pas d'authentification MPD pour rester
+# simple. À reconsidérer si jamais l'instance devient accessible depuis
+# l'extérieur (voir section Sécurité du README).
 
 # --- Sortie audio : c'est la partie qui nous intéresse ---
 audio_output {
     type            "pulse"
-    name            "JBL Flip 3"
-    # Nom affiché côté MPD pour cette sortie (purement cosmétique).
+    name            "${SPEAKER_NAME}"
+    # Nom affiché côté MPD pour cette sortie (purement cosmétique),
+    # remplacé au démarrage par le nom saisi dans les options de l'add-on.
 
     server          "unix:/run/audio/pulse.sock"
     # Sans cette ligne, MPD échouait avec "Failed to open audio output"
@@ -48,22 +50,20 @@ audio_output {
 
     sink            "${BLUETOOTH_SINK}"
     # <-- Remplacé au démarrage par run.sh (via envsubst), ex :
-    #     bluez_sink.FC_A8_9A_CC_54_23.a2dp_sink
-    # C'est ce qui force MPD à jouer précisément sur la JBL, et non sur
-    # la sortie audio "par défaut" du Pi (jack/HDMI).
-    # BUG CORRIGÉ : ce champ utilisait "{{BLUETOOTH_SINK}}" (syntaxe
-    # Jinja/Mustache) au lieu de "${BLUETOOTH_SINK}" — envsubst ne
-    # reconnaît QUE la syntaxe `$VAR`/`${VAR}`, donc le texte littéral
-    # "{{BLUETOOTH_SINK}}" n'était jamais remplacé, et MPD essayait de
-    # se connecter à un sink qui n'existait pas. C'était la cause réelle
-    # de "Failed to open audio output" depuis le début.
+    #     bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink
+    # C'est ce qui force MPD à jouer précisément sur cette enceinte, et
+    # non sur la sortie audio "par défaut" de l'hôte (jack/HDMI).
+    # ATTENTION à la syntaxe : envsubst ne reconnaît QUE `$VAR`/`${VAR}`,
+    # pas `{{VAR}}` façon Jinja/Mustache — utiliser cette dernière ici
+    # ferait échouer silencieusement toute lecture audio (MPD tenterait
+    # de se connecter à un sink qui n'existe pas).
 }
 
 # --- Format audio ---
 audio_output_format "44100:16:2"
-# Doit matcher le format du sink Bluetooth qu'on a vu plus tôt avec
-# `pactl list short sinks` (s16le 2ch 44100Hz), pour éviter que MPD
-# ne fasse un rééchantillonnage inutile.
+# Format standard des sinks Bluetooth A2DP (s16le 2ch 44100Hz), pour
+# éviter que MPD ne fasse un rééchantillonnage inutile. Vérifiable pour
+# ton enceinte avec `pactl list short sinks` en SSH sur l'hôte.
 
 restore_paused      "yes"
 # Si le service redémarre, MPD se remet en pause plutôt que de repartir

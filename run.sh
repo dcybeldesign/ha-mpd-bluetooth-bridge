@@ -3,9 +3,9 @@
 # run.sh — Script de démarrage de l'add-on
 # ============================================================
 # Rôle : préparer la config MPD avec le bon sink Bluetooth, s'assurer
-# que la JBL est connectée, puis lancer MPD. Une boucle de fond
-# surveille la connexion Bluetooth et la rétablit automatiquement
-# si la JBL se déconnecte (mise en veille, coupure, etc.).
+# que l'enceinte configurée est connectée, puis lancer MPD. Une boucle
+# de fond surveille la connexion Bluetooth et la rétablit automatiquement
+# si l'enceinte se déconnecte (mise en veille, coupure, etc.).
 #
 # La ligne "#!/usr/bin/with-contenv bashio" (au lieu d'un simple bash)
 # permet d'utiliser directement les fonctions "bashio::..." fournies
@@ -26,39 +26,52 @@ mkdir -p /var/lib/mpd/playlists /var/lib/mpd/music
 
 # --- 1. Lecture de la configuration utilisateur ---
 BT_MAC=$(bashio::config 'bluetooth_mac')
-# Récupère l'adresse MAC saisie par l'utilisateur dans l'onglet
-# "Configuration" de l'add-on (ex: FC:A8:9A:CC:54:23). Si l'utilisateur
-# change d'enceinte plus tard, il modifie juste ce champ — pas besoin
-# de toucher au code.
+# Adresse MAC de l'enceinte, saisie par l'utilisateur dans l'onglet
+# "Configuration" de l'add-on (ex: AA:BB:CC:DD:EE:FF). Champ obligatoire
+# (voir schema dans config.yaml) : aucune valeur par défaut n'est fournie,
+# chaque utilisateur doit renseigner l'adresse de SA propre enceinte.
 
-bashio::log.info "Adresse Bluetooth cible : ${BT_MAC}"
+SPEAKER_NAME=$(bashio::config 'speaker_name')
+# Nom cosmétique de l'enceinte, affiché côté MPD (n'affecte pas le
+# fonctionnement). Par défaut "Bluetooth Speaker" si non renseigné.
+
+RECONNECT_INTERVAL=$(bashio::config 'reconnect_interval')
+# Intervalle (en secondes) entre deux vérifications de la connexion
+# Bluetooth par la boucle de surveillance (voir étape 5). Par défaut 30s.
+
+bashio::log.info "Target speaker: ${SPEAKER_NAME} (${BT_MAC})"
 
 # --- 2. Calcul du nom du sink PulseAudio correspondant ---
 # PulseAudio nomme les sinks Bluetooth en remplaçant les ":" par des "_"
 # et en les collant au format bluez_sink.<MAC>.a2dp_sink.
-# Exemple : FC:A8:9A:CC:54:23  ->  FC_A8_9A_CC_54_23
+# Exemple : AA:BB:CC:DD:EE:FF  ->  AA_BB_CC_DD_EE_FF
 BT_MAC_UNDERSCORE=$(echo "${BT_MAC}" | tr ':' '_')
 BLUETOOTH_SINK="bluez_sink.${BT_MAC_UNDERSCORE}.a2dp_sink"
 
-bashio::log.info "Sink PulseAudio calculé : ${BLUETOOTH_SINK}"
+bashio::log.info "Computed PulseAudio sink: ${BLUETOOTH_SINK}"
 
 # --- 3. Génération du fichier mpd.conf final ---
-# On remplace {{BLUETOOTH_SINK}} dans le modèle par la vraie valeur
-# calculée ci-dessus, et on écrit le résultat dans /etc/mpd.conf.
-export BLUETOOTH_SINK
-envsubst '${BLUETOOTH_SINK}' < /etc/mpd.conf.template > /etc/mpd.conf
+# On remplace ${BLUETOOTH_SINK} et ${SPEAKER_NAME} dans le modèle par les
+# vraies valeurs calculées ci-dessus, et on écrit le résultat dans
+# /etc/mpd.conf. Attention à la syntaxe : envsubst ne reconnaît QUE
+# `$VAR`/`${VAR}` (pas de `{{VAR}}` façon Jinja/Mustache — un bug de ce
+# type, avec le template utilisant {{BLUETOOTH_SINK}}, avait fait
+# échouer silencieusement toute lecture audio lors du développement
+# initial : MPD tentait de se connecter à un sink qui n'existait pas).
+export BLUETOOTH_SINK SPEAKER_NAME
+envsubst '${BLUETOOTH_SINK} ${SPEAKER_NAME}' < /etc/mpd.conf.template > /etc/mpd.conf
 
-bashio::log.info "Fichier /etc/mpd.conf généré."
+bashio::log.info "/etc/mpd.conf generated."
 
-# --- 4. Connexion (ou reconnexion) Bluetooth à la JBL ---
+# --- 4. Connexion (ou reconnexion) Bluetooth à l'enceinte ---
 # Fonction réutilisée aussi bien au démarrage que dans la boucle de
 # surveillance plus bas.
 connect_speaker() {
-    bashio::log.info "Tentative de connexion à la JBL (${BT_MAC})..."
+    bashio::log.info "Connecting to ${SPEAKER_NAME} (${BT_MAC})..."
     bluetoothctl power on
     bluetoothctl connect "${BT_MAC}" \
-        && bashio::log.info "JBL connectée." \
-        || bashio::log.warning "Échec de connexion à la JBL — nouvelle tentative dans la boucle de surveillance."
+        && bashio::log.info "${SPEAKER_NAME} connected." \
+        || bashio::log.warning "Failed to connect to ${SPEAKER_NAME} — will retry in the monitoring loop."
 }
 
 # On tente une première connexion avant même de démarrer MPD, pour que
@@ -66,14 +79,15 @@ connect_speaker() {
 connect_speaker
 
 # --- 5. Boucle de surveillance Bluetooth (tourne en tâche de fond) ---
-# Vérifie toutes les 30 secondes si la JBL est toujours connectée ;
-# si elle ne l'est plus (mise en veille, hors de portée...), on relance
-# une connexion automatiquement, sans intervention manuelle.
+# Vérifie périodiquement (intervalle configurable, voir RECONNECT_INTERVAL)
+# si l'enceinte est toujours connectée ; si elle ne l'est plus (mise en
+# veille, hors de portée...), on relance une connexion automatiquement,
+# sans intervention manuelle.
 (
     while true; do
-        sleep 30
+        sleep "${RECONNECT_INTERVAL}"
         if ! bluetoothctl info "${BT_MAC}" | grep -q "Connected: yes"; then
-            bashio::log.warning "JBL déconnectée, tentative de reconnexion..."
+            bashio::log.warning "${SPEAKER_NAME} disconnected, attempting to reconnect..."
             connect_speaker
         fi
     done
@@ -83,7 +97,7 @@ connect_speaker
 # (elle ne se termine jamais, c'est voulu).
 
 # --- 6. Lancement de MPD au premier plan ---
-bashio::log.info "Démarrage de MPD..."
+bashio::log.info "Starting MPD..."
 exec mpd --no-daemon /etc/mpd.conf
 # "exec" remplace ce script par le processus MPD : MPD devient le
 # processus principal du conteneur (utile pour que le Supervisor sache

@@ -1,0 +1,19 @@
+# ============================================================
+# build.yaml — Images de base par architecture
+# ============================================================
+# Le Supervisor lit ce fichier au moment de construire l'add-on et
+# choisit automatiquement la bonne ligne selon l'architecture réelle
+# de l'hôte (Raspberry Pi 4 = aarch64, PC/NUC = amd64, etc.), puis la
+# fournit au Dockerfile via la variable ${BUILD_FROM}. Sans ce fichier,
+# le Dockerfile utiliserait toujours sa valeur par défaut (aarch64),
+# ce qui ferait planter la construction sur toute autre architecture.
+
+build_from:
+  aarch64: homeassistant/aarch64-base:3.18
+  amd64: homeassistant/amd64-base:3.18
+  armv7: homeassistant/armv7-base:3.18
+  armhf: homeassistant/armhf-base:3.18
+  i386: homeassistant/i386-base:3.18
+# Toutes ces images existent bel et bien avec le tag "3.18" (vérifié sur
+# Docker Hub avant de les déclarer — un tag "3.19" inexistant avait causé
+# un échec de build lors du développement initial, voir CHANGELOG.md).
