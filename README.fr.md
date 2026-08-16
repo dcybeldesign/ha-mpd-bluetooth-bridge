@@ -205,6 +205,13 @@ libres d'utilisation, de partage et de modification. Si tu réutilises ou
 t'appuies sur ce travail, une mention de mon nom est appréciée (voir
 ci-dessous), mais rien ici n'est fourni avec une quelconque garantie.
 
+## Soutenir ce projet
+
+Si cet add-on t'a été utile, tu peux soutenir son développement :
+
+- [GitHub Sponsors](https://github.com/sponsors/dcybeldesign)
+- [Buy Me a Coffee](https://buymeacoffee.com/dcybeldesign)
+
 ## Auteur
 
 [dcybeldesign](https://github.com/dcybeldesign)

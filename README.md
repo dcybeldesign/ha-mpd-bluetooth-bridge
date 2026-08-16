@@ -196,6 +196,13 @@ The files are free to use, share, and modify. If you reuse or build on
 this work, a credit back to me is appreciated (see below), but nothing
 here is provided with any guarantee.
 
+## Support this project
+
+If this add-on has been useful to you, you can support its development:
+
+- [GitHub Sponsors](https://github.com/sponsors/dcybeldesign)
+- [Buy Me a Coffee](https://buymeacoffee.com/dcybeldesign)
+
 ## Author
 
 [dcybeldesign](https://github.com/dcybeldesign)
