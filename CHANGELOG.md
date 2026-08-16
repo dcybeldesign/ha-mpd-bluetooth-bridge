@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.1
+- Fixed a real-world failure mode: after a burst of rapid Bluetooth
+  disconnects/reconnects (e.g. a low-battery speaker), BlueZ could report
+  the connection as stable again while PulseAudio's card profile stayed
+  stuck on `off` instead of switching back to `a2dp_sink` — no audio sink
+  existed, so MPD had nowhere to output sound, with no visible error on
+  the Bluetooth side. The monitoring loop now also checks that the
+  expected PulseAudio sink exists and forces the `a2dp_sink` profile back
+  if it's missing, self-healing without requiring a manual SSH fix.
+
 ## 2.0.0
 - Renamed from "MPD JBL Bridge" to **"Bluetooth Speaker MPD Bridge"** (slug
   `mpd_bluetooth_bridge`, was `mpd_jbl_bridge`) — the add-on works with any

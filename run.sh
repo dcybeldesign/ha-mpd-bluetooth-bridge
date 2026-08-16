@@ -47,6 +47,7 @@ bashio::log.info "Target speaker: ${SPEAKER_NAME} (${BT_MAC})"
 # Exemple : AA:BB:CC:DD:EE:FF  ->  AA_BB_CC_DD_EE_FF
 BT_MAC_UNDERSCORE=$(echo "${BT_MAC}" | tr ':' '_')
 BLUETOOTH_SINK="bluez_sink.${BT_MAC_UNDERSCORE}.a2dp_sink"
+BLUETOOTH_CARD="bluez_card.${BT_MAC_UNDERSCORE}"
 
 bashio::log.info "Computed PulseAudio sink: ${BLUETOOTH_SINK}"
 
@@ -74,9 +75,37 @@ connect_speaker() {
         || bashio::log.warning "Failed to connect to ${SPEAKER_NAME} — will retry in the monitoring loop."
 }
 
+# --- 4bis. Garde-fou : forcer le profil audio PulseAudio si besoin ---
+# Cas observé en conditions réelles : après une série rapprochée de
+# déconnexions/reconnexions Bluetooth (typiquement une enceinte à
+# batterie faible), BlueZ finit par rapporter la connexion comme stable
+# ("Connected: yes"), mais le profil de la carte PulseAudio correspondante
+# reste bloqué sur "off" au lieu de repasser sur "a2dp_sink" — le sink
+# audio n'existe alors plus du tout, et MPD n'a nulle part où streamer,
+# sans qu'aucune erreur visible n'apparaisse côté Bluetooth. Ce n'est pas
+# un bug de ce script mais un comportement du module PulseAudio Bluetooth
+# lui-même : on ne peut pas empêcher que ça arrive, seulement le détecter
+# et s'en remettre automatiquement.
+ensure_audio_sink() {
+    if pactl list short sinks 2>/dev/null | grep -q "${BLUETOOTH_SINK}"; then
+        return
+    fi
+    # Le sink attendu n'existe pas : on force le profil. Sans effet si la
+    # carte PulseAudio n'a pas encore été créée par BlueZ (juste après une
+    # connexion très récente) — la boucle de surveillance réessaiera au
+    # prochain passage.
+    if pactl set-card-profile "${BLUETOOTH_CARD}" a2dp_sink 2>/dev/null; then
+        bashio::log.warning "Bluetooth audio sink was missing, forced PulseAudio profile back to a2dp_sink."
+    fi
+}
+
 # On tente une première connexion avant même de démarrer MPD, pour que
 # le sink existe déjà quand MPD essaiera de s'y attacher.
 connect_speaker
+sleep 2
+# Laisse le temps à PulseAudio d'enregistrer la carte Bluetooth après la
+# connexion avant de vérifier/forcer son profil.
+ensure_audio_sink
 
 # --- 5. Boucle de surveillance Bluetooth (tourne en tâche de fond) ---
 # Vérifie périodiquement (intervalle configurable, voir RECONNECT_INTERVAL)
@@ -89,7 +118,12 @@ connect_speaker
         if ! bluetoothctl info "${BT_MAC}" | grep -q "Connected: yes"; then
             bashio::log.warning "${SPEAKER_NAME} disconnected, attempting to reconnect..."
             connect_speaker
+            sleep 2
         fi
+        # Vérifié à chaque passage, pas seulement après une reconnexion :
+        # le profil PulseAudio peut rester bloqué sur "off" alors que
+        # Bluetooth se dit déjà connecté depuis un moment (voir 4bis).
+        ensure_audio_sink
     done
 ) &
 # Le "&" final lance cette boucle en arrière-plan : le script continue

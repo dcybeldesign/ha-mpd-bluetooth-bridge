@@ -186,6 +186,15 @@ vers l'extérieur sans ajouter tes propres protections devant.
   seulement `connect`). Tu peux vérifier l'état à tout moment avec
   `bluetoothctl info AA:BB:CC:DD:EE:FF` dans un terminal : cherche
   `Paired: yes`, `Trusted: yes` et `Connected: yes` dans le résultat.
+- **Le son s'est arrêté après une perte de connexion prolongée de
+  l'enceinte (batterie faible par exemple), même si elle semble
+  reconnectée maintenant** : depuis la v2.0.1, c'est géré automatiquement
+  — l'add-on vérifie que le sink audio PulseAudio existe toujours et
+  force à nouveau le profil `a2dp_sink` s'il a disparu, ce qui peut
+  arriver après une rafale de déconnexions/reconnexions Bluetooth
+  rapprochées. Sur une version plus ancienne, redémarrer l'add-on
+  contourne le problème, ou mets à jour pour bénéficier du correctif
+  automatique.
 - **Mon enceinte se déconnecte sans arrêt / ne se reconnecte pas toute
   seule** : vérifie que `trust` a bien été exécuté pendant l'appairage
   (étape 4). Sans ça, HAOS n'autorise pas la reconnexion automatique

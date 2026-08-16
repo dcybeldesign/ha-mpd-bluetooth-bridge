@@ -178,6 +178,13 @@ externally without adding your own protections in front of it.
   `connect`). You can check current status any time with
   `bluetoothctl info AA:BB:CC:DD:EE:FF` in a terminal: look for
   `Paired: yes`, `Trusted: yes`, and `Connected: yes` in its output.
+- **Sound stopped after the speaker lost connection for a while (e.g. low
+  battery), even though it looks reconnected now**: since v2.0.1 this is
+  handled automatically — the add-on checks that the PulseAudio audio
+  sink still exists and re-forces the `a2dp_sink` profile if it went
+  missing, which can happen after a burst of rapid Bluetooth
+  disconnects/reconnects. If you're on an older version, restarting the
+  add-on works around it, or update to get the automatic fix.
 - **My speaker keeps disconnecting / doesn't reconnect automatically**:
   confirm `trust` was run during pairing (step 4). Without it, HAOS
   won't allow the automatic reconnection this add-on relies on. You can

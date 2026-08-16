@@ -10,11 +10,12 @@ name: "Bluetooth Speaker MPD Bridge"
 # Générique : fonctionne avec n'importe quelle enceinte Bluetooth A2DP,
 # pas seulement une JBL (ancien nom : "MPD JBL Bridge").
 
-version: "2.0.0"
+version: "2.0.1"
 # Version de l'add-on. À incrémenter à chaque modification si on veut
 # que le Supervisor propose une "mise à jour" plus tard.
 # Bump en 2.0.0 : changement de nom/slug (rupture de compatibilité pour
 # quiconque avait déjà installé la v1 sous l'ancien slug "mpd_jbl_bridge").
+# Bump en 2.0.1 : correctif du profil audio PulseAudio (voir CHANGELOG).
 
 slug: "mpd_bluetooth_bridge"
 # Identifiant technique unique de l'add-on (utilisé dans les URLs internes,
