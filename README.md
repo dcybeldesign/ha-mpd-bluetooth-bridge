@@ -52,8 +52,8 @@ the first-time pairing for you.
 
 **1. Get a terminal on your Home Assistant host.**
 If typing commands into Home Assistant is new to you, go to **Settings →
-Add-ons** (also labelled "Apps"/"Application store" on some Home Assistant
-versions) → **Add-on store**, search for the official **"Terminal & SSH"**
+Apps** (called "Add-ons" on Home Assistant versions before the mid-2026
+rename) → **App store**, search for the official **"Terminal & SSH"**
 add-on, install it, start it, then open it from the sidebar. That gives
 you a command-line prompt inside Home Assistant, no separate SSH client
 needed.
@@ -102,14 +102,14 @@ quit
 
 ## Installation
 
-1. Add this repository's GitHub URL as a custom add-on repository in Home
-   Assistant (**Settings → Add-ons → Add-on store → ⋮ (top-right menu) →
+1. Add this repository's GitHub URL as a custom repository in Home
+   Assistant (**Settings → Apps → App store → ⋮ (top-right menu) →
    Repositories**, paste the URL, close), or copy this folder manually to
    `/addons/mpd_bluetooth_bridge` on your host if you're not using the
    repository method.
-2. Refresh the add-on store (same ⋮ menu → Check for updates) so the
+2. Refresh the app store (same ⋮ menu → Check for updates) so the
    add-on appears. It'll show up under a section named after this
-   repository (or under "Local add-ons" if you copied the folder
+   repository (or under "Local apps" if you copied the folder
    manually).
 3. Click the add-on, install it, open its **Configuration** tab and fill
    in your speaker's Bluetooth MAC address from the pairing steps above

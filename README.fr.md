@@ -55,8 +55,9 @@ peut pas faire le premier appairage à ta place.
 
 **1. Ouvre un terminal sur ton hôte Home Assistant.**
 Si taper des commandes dans Home Assistant est nouveau pour toi, va dans
-**Paramètres → Applications** (aussi appelé "Add-ons" selon la version de
-Home Assistant) → **Magasin d'applications**, cherche l'add-on officiel
+**Paramètres → Applications** (appelé "Add-ons" sur les versions de Home
+Assistant antérieures au renommage mi-2026) → **Magasin d'applications**,
+cherche l'add-on officiel
 **"Terminal & SSH"**, installe-le, démarre-le, puis ouvre-le depuis le
 menu latéral. Ça te donne une invite de commande directement dans Home
 Assistant, pas besoin d'un client SSH séparé.
@@ -110,8 +111,8 @@ quit
    ⋮ (menu en haut à droite) → Dépôts**, colle l'URL, ferme), ou copie
    manuellement ce dossier vers `/addons/mpd_bluetooth_bridge` sur ton
    hôte si tu n'utilises pas la méthode par dépôt.
-2. Actualise le magasin d'add-ons (même menu ⋮ → Rechercher des mises à
-   jour) pour que l'add-on apparaisse. Il sera listé sous une section
+2. Actualise le magasin d'applications (même menu ⋮ → Rechercher des mises
+   à jour) pour que l'add-on apparaisse. Il sera listé sous une section
    nommée d'après ce dépôt (ou sous "Applications locales" si tu as copié
    le dossier manuellement).
 3. Clique sur l'add-on, installe-le, ouvre l'onglet **Configuration** et
