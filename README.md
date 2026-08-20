@@ -1,38 +1,70 @@
-# Bluetooth Speaker MPD Bridge
+# Bluetooth Audio Bridge
 
-A Home Assistant (HAOS) add-on that runs a [MPD](https://www.musicpd.org/)
-(Music Player Daemon) server whose audio output is forced to a Bluetooth
-speaker paired with the host, and exposes that MPD server to
-[Music Assistant](https://www.music-assistant.io/) via its built-in
-**MPD Players** provider.
+A Home Assistant (HAOS) add-on that connects any Bluetooth A2DP speaker
+paired with the host and exposes it two ways:
+
+1. A **native `media_player` entity** (DLNA/UPnP), usable directly from
+   automations, scripts, or any Home Assistant integration, no music
+   server required.
+2. An **optional [MPD](https://www.musicpd.org/) server** bridging the
+   same speaker to [Music Assistant](https://www.music-assistant.io/) via
+   its built-in **MPD Players** provider (the original purpose of this
+   add-on).
+
+Both can run at the same time on the same speaker.
 
 *[Lire en français](README.fr.md)*
 
 ## Why this exists
 
-Music Assistant's own **Local Audio Out** provider can't target a Bluetooth
-PulseAudio sink directly. The audio output picker on HAOS add-ons only lists
-physical hardware (headphone jack / HDMI), never dynamically-paired
-Bluetooth devices. This add-on works around that by running a small,
-dedicated MPD server configured to output straight to the Bluetooth sink.
-Music Assistant then connects to it over the standard MPD protocol, which
-*is* officially supported.
+The audio output picker on HAOS add-ons only lists physical hardware
+(headphone jack / HDMI), never Bluetooth devices paired dynamically with
+the host. Home Assistant also has no built-in way to turn "a Bluetooth
+speaker paired with the host" into a `media_player` entity on its own.
+This add-on fills both gaps: it exposes the speaker as a real
+`media_player` entity, and, if you also use Music Assistant, keeps the
+original MPD bridge available as an optional second output.
 
 ## How it works
 
-- `run.sh` computes the PulseAudio sink name from the Bluetooth MAC address
-  you configure, generates `/etc/mpd.conf` from `mpd.conf.template`,
-  connects the speaker via `bluetoothctl`, then starts MPD.
+- **Native `media_player`**: [gmrender-resurrect](https://github.com/hzeller/gmrender-resurrect)
+  exposes the Bluetooth PulseAudio sink as a DLNA/UPnP renderer. Home
+  Assistant's built-in `dlna_dmr` integration discovers it automatically
+  on the local network (SSDP), no manual entity setup needed.
+- **Optional MPD server** (`enable_mpd`, on by default): `run.sh`
+  generates `/etc/mpd.conf` from the sink name computed from your
+  speaker's MAC address, connects the speaker via `bluetoothctl`, then
+  starts MPD. Music Assistant's "MPD Players" provider connects to it
+  over the standard MPD protocol port (`6600/tcp`).
 - A background loop checks the Bluetooth connection every
   `reconnect_interval` seconds (default 30s) and reconnects automatically
   if the speaker drops (sleep mode, out of range, etc.).
-- MPD exposes port `6600/tcp` (standard MPD protocol port), which Music
-  Assistant's "MPD Players" provider connects to directly.
+- Both outputs share the same PulseAudio sink and can run simultaneously;
+  PulseAudio mixes multiple clients on one sink natively.
+
+## Network access (`host_network`), please read before installing
+
+This add-on requests `host_network: true`. Unlike most add-ons, it does
+not run inside Docker's isolated bridge network: it uses the host's
+network stack directly, the same level of access as add-ons like
+Tailscale or Terminal & SSH.
+
+**Why it's needed**: the native `media_player` relies on SSDP (a
+multicast-based discovery protocol) for Home Assistant to find it
+automatically. Multicast traffic doesn't reliably cross Docker's default
+bridge network, so host networking is a requirement of the DLNA/UPnP
+protocol itself, not a convenience choice made for this project.
+
+**What that means in practice**: while running, this add-on is visible
+on, and can see, your entire local network, not only the ports it
+explicitly declares. If that's not acceptable on your network, this
+add-on is not a good fit; there is currently no way to get automatic
+DLNA/UPnP discovery working without `host_network`.
 
 ## Requirements
 
-- A Home Assistant OS host with a working Bluetooth adapter. Developed and
-  tested on a **Raspberry Pi 4** (built-in Bluetooth 5.0). See
+- A Home Assistant OS host with a working Bluetooth adapter. Developed
+  and tested on a **Raspberry Pi 4** (built-in Bluetooth 5.0). See
   [Portability](#portability-beyond-raspberry-pi-4) below for other
   hardware.
 - Shell/terminal access to that host (see step 1 of
@@ -41,8 +73,9 @@ Music Assistant then connects to it over the standard MPD protocol, which
 - The target speaker must already be **paired** with the host beforehand.
   This add-on only handles connecting/reconnecting an already-paired
   device, not the first-time pairing. Full walkthrough below.
-- [Music Assistant](https://www.music-assistant.io/) add-on installed and
-  running.
+- [Music Assistant](https://www.music-assistant.io/) is only needed if
+  you plan to use the optional MPD output (`enable_mpd`). The native
+  `media_player` works without it.
 
 ## Pairing your speaker (first-time setup)
 
@@ -105,7 +138,7 @@ quit
 1. Add this repository's GitHub URL as a custom repository in Home
    Assistant (**Settings → Apps → App store → ⋮ (top-right menu) →
    Repositories**, paste the URL, close), or copy this folder manually to
-   `/addons/mpd_bluetooth_bridge` on your host if you're not using the
+   `/addons/bluetooth_audio_bridge` on your host if you're not using the
    repository method.
 2. Refresh the app store (same ⋮ menu → Check for updates) so the
    add-on appears. It'll show up under a section named after this
@@ -114,7 +147,12 @@ quit
 3. Click the add-on, install it, open its **Configuration** tab and fill
    in your speaker's Bluetooth MAC address from the pairing steps above
    (required, see [Configuration](#configuration)), then start it.
-4. In Music Assistant, go to **Settings → Player providers**. The **MPD
+4. The native `media_player` entity should appear automatically in Home
+   Assistant within a couple of minutes, see
+   [Native media_player output](#native-media_player-output-dlnaupnp)
+   below if it doesn't.
+5. **Only if you want the MPD output** (`enable_mpd`, on by default): in
+   Music Assistant, go to **Settings → Player providers**. The **MPD
    Players** provider is a single, shared entry: if you don't have it set
    up yet, click **Add a player provider → MPD Players**. If it's already
    configured (for example from another MPD-based bridge), just open the
@@ -138,8 +176,44 @@ quit
 | Option | Description | Default |
 |---|---|---|
 | `bluetooth_mac` | MAC address of the Bluetooth speaker (format `AA:BB:CC:DD:EE:FF`). **Required.** | *(none, must be set)* |
-| `speaker_name` | Cosmetic label for the MPD output. | `Bluetooth Speaker` |
+| `speaker_name` | Cosmetic label for the outputs (MPD and the `media_player` friendly name). | `Bluetooth Speaker` |
 | `reconnect_interval` | Seconds between Bluetooth connection checks (10-300). | `30` |
+| `enable_mpd` | Whether to start the MPD server. The Bluetooth connection and the native `media_player` are unaffected either way; turn this off if you only want the native `media_player` output and don't use Music Assistant. | `true` |
+
+## Native `media_player` output (DLNA/UPnP)
+
+Once the add-on is running and the speaker is paired, Home Assistant
+should discover it on its own within a couple of minutes (periodic SSDP
+scan) as a `media_player` entity named after `speaker_name`. If it
+hasn't shown up after a few minutes, trigger a manual scan: **Settings →
+Devices & services → Add integration → DLNA Digital Media Renderer**.
+
+Once the entity exists, you can send audio to it like any other
+`media_player`: from the media player card, a script, or an automation
+using the `tts.speak` or `media_player.play_media` service with
+`media_player_entity_id` targeting this entity.
+
+## Voice PE
+
+**What works today**: since the native `media_player` entity exists,
+scripted announcements sent through it, for example an automation
+calling `tts.speak` with `media_player_entity_id` set to this add-on's
+entity, play on your Bluetooth speaker exactly like on any other
+`media_player`. This works whether the automation was triggered by a
+Voice PE device or anything else.
+
+**What doesn't (yet)**: a live conversational reply, the answer to a
+question you ask a Voice PE device directly, cannot be redirected to a
+different `media_player`. The Home Assistant Assist pipeline is designed
+to answer back on the same device that captured your voice; separating
+capture and reply would require changes to the Voice PE's own ESPHome
+firmware, which is outside the scope of this add-on. See
+[home-assistant/discussions#689](https://github.com/orgs/home-assistant/discussions/689)
+if you want to follow upstream progress on this; as of this writing it's
+still open with no built-in solution.
+
+This has not been verified on real Voice PE hardware. Feedback from
+anyone who tries it, positive or negative, is welcome via an issue.
 
 ## Portability beyond Raspberry Pi 4
 
@@ -157,11 +231,14 @@ hardware, please open an issue with the result, good or bad.
 
 ## Security note
 
-The MPD server has no authentication and is reachable from your local
-network (not the internet, unless you've specifically exposed it). This
-is intentional to keep setup simple, matching the assumption that your
-Home Assistant network is already trusted. Don't expose this port
-externally without adding your own protections in front of it.
+Beyond the `host_network` access already covered
+[above](#network-access-host_network-please-read-before-installing), the
+MPD server itself (if `enable_mpd` is on) has no authentication and is
+reachable from your local network (not the internet, unless you've
+specifically exposed it). This is intentional to keep setup simple,
+matching the assumption that your Home Assistant network is already
+trusted. Don't expose this port externally without adding your own
+protections in front of it.
 
 ## Troubleshooting
 
@@ -170,38 +247,48 @@ externally without adding your own protections in front of it.
   before the container even starts. Double-check you copied the full
   address with colons (`AA:BB:CC:DD:EE:FF`), not dashes or no
   separators.
-- **"Failed to open audio output" / no sound, but the add-on is running**:
-  this almost always means the speaker isn't actually *paired and
-  trusted* yet. "In range" or "powered on" isn't enough. Go back through
+- **"Failed to open audio output" / no sound on the MPD side, but the
+  add-on is running**: this almost always means the speaker isn't
+  actually *paired and trusted* yet. "In range" or "powered on" isn't
+  enough. Go back through
   [Pairing your speaker](#pairing-your-speaker-first-time-setup) and make
   sure the `pair` and `trust` commands both succeeded (not just
   `connect`). You can check current status any time with
   `bluetoothctl info AA:BB:CC:DD:EE:FF` in a terminal: look for
   `Paired: yes`, `Trusted: yes`, and `Connected: yes` in its output.
+- **The `media_player` entity never shows up**: confirm `host_network:
+  true` wasn't disabled by mistake in the add-on's Network tab, then try
+  the manual scan described in
+  [Native media_player output](#native-media_player-output-dlnaupnp).
+  Also check the add-on's log for a line confirming `gmediarender`
+  started; if it's missing, the add-on didn't build correctly, open an
+  issue with the build log.
 - **Sound stopped after the speaker lost connection for a while (e.g. low
-  battery), even though it looks reconnected now**: since v2.0.1 this is
-  handled automatically — the add-on checks that the PulseAudio audio
-  sink still exists and re-forces the `a2dp_sink` profile if it went
-  missing, which can happen after a burst of rapid Bluetooth
-  disconnects/reconnects. If you're on an older version, restarting the
-  add-on works around it, or update to get the automatic fix.
+  battery), even though it looks reconnected now**: the add-on checks
+  that the PulseAudio audio sink still exists and re-forces the
+  `a2dp_sink` profile if it went missing, which can happen after a burst
+  of rapid Bluetooth disconnects/reconnects. If this keeps happening,
+  restarting the add-on works around it in the meantime.
 - **My speaker keeps disconnecting / doesn't reconnect automatically**:
   confirm `trust` was run during pairing (step 4). Without it, HAOS
   won't allow the automatic reconnection this add-on relies on. You can
   re-run `trust AA:BB:CC:DD:EE:FF` in `bluetoothctl` at any time without
   redoing the full pairing.
 - **Music Assistant shows the MPD player as unavailable**: double-check
-  you used the add-on's *internal hostname*, not the host's IP address
-  (see step 4 in Installation).
+  `enable_mpd` is on and you used the add-on's *internal hostname*, not
+  the host's IP address (see step 5 in Installation).
 
 ## Disclaimer
 
 This project is shared freely, put together on my own time. I'm not
 responsible for any problems its use might cause (hardware, software, or
-otherwise). You use, install, and adapt it entirely at your own risk.
-The files are free to use, share, and modify. If you reuse or build on
-this work, a credit back to me is appreciated (see below), but nothing
-here is provided with any guarantee.
+otherwise), including anything related to the broader network access
+that `host_network: true` grants this add-on (see
+[Network access](#network-access-host_network-please-read-before-installing)
+above). You use, install, and adapt it entirely at your own risk. The
+files are free to use, share, and modify. If you reuse or build on this
+work, a credit back to me is appreciated (see below), but nothing here is
+provided with any guarantee.
 
 ## Support this project
 

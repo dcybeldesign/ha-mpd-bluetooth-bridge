@@ -16,3 +16,10 @@ configuration:
     description: >-
       How often the add-on checks whether the speaker is still connected,
       and reconnects it automatically if not (10-300 seconds).
+  enable_mpd:
+    name: Enable MPD server
+    description: >-
+      Start the MPD server for use with Music Assistant's "MPD Players"
+      provider. The Bluetooth connection and the native media_player
+      output are unaffected either way; turn this off if you only want
+      the native media_player and don't use Music Assistant.

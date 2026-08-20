@@ -39,6 +39,12 @@ RECONNECT_INTERVAL=$(bashio::config 'reconnect_interval')
 # Intervalle (en secondes) entre deux vérifications de la connexion
 # Bluetooth par la boucle de surveillance (voir étape 5). Par défaut 30s.
 
+ENABLE_MPD=$(bashio::config 'enable_mpd')
+# Par défaut true (voir config.yaml) : préserve le chemin MPD/Music
+# Assistant existant. La connexion Bluetooth (étapes 1 à 4bis) reste
+# nécessaire dans tous les cas — seule la génération de mpd.conf et le
+# lancement de MPD (étapes 3 et 6) sont conditionnés par cette option.
+
 bashio::log.info "Target speaker: ${SPEAKER_NAME} (${BT_MAC})"
 
 # --- 2. Calcul du nom du sink PulseAudio correspondant ---
@@ -51,7 +57,7 @@ BLUETOOTH_CARD="bluez_card.${BT_MAC_UNDERSCORE}"
 
 bashio::log.info "Computed PulseAudio sink: ${BLUETOOTH_SINK}"
 
-# --- 3. Génération du fichier mpd.conf final ---
+# --- 3. Génération du fichier mpd.conf final (si MPD activé) ---
 # On remplace ${BLUETOOTH_SINK} et ${SPEAKER_NAME} dans le modèle par les
 # vraies valeurs calculées ci-dessus, et on écrit le résultat dans
 # /etc/mpd.conf. Attention à la syntaxe : envsubst ne reconnaît QUE
@@ -59,10 +65,13 @@ bashio::log.info "Computed PulseAudio sink: ${BLUETOOTH_SINK}"
 # type, avec le template utilisant {{BLUETOOTH_SINK}}, avait fait
 # échouer silencieusement toute lecture audio lors du développement
 # initial : MPD tentait de se connecter à un sink qui n'existait pas).
-export BLUETOOTH_SINK SPEAKER_NAME
-envsubst '${BLUETOOTH_SINK} ${SPEAKER_NAME}' < /etc/mpd.conf.template > /etc/mpd.conf
-
-bashio::log.info "/etc/mpd.conf generated."
+if bashio::var.true "${ENABLE_MPD}"; then
+    export BLUETOOTH_SINK SPEAKER_NAME
+    envsubst '${BLUETOOTH_SINK} ${SPEAKER_NAME}' < /etc/mpd.conf.template > /etc/mpd.conf
+    bashio::log.info "/etc/mpd.conf generated."
+else
+    bashio::log.info "enable_mpd is false: skipping mpd.conf generation."
+fi
 
 # --- 4. Connexion (ou reconnexion) Bluetooth à l'enceinte ---
 # Fonction réutilisée aussi bien au démarrage que dans la boucle de
@@ -130,12 +139,49 @@ ensure_audio_sink
 # immédiatement à l'étape suivante sans attendre que la boucle se termine
 # (elle ne se termine jamais, c'est voulu).
 
-# --- 6. Lancement de MPD au premier plan ---
-bashio::log.info "Starting MPD..."
-exec mpd --no-daemon /etc/mpd.conf
-# "exec" remplace ce script par le processus MPD : MPD devient le
-# processus principal du conteneur (utile pour que le Supervisor sache
-# si l'add-on plante et doive être redémarré). "--no-daemon" empêche
-# MPD de se détacher en arrière-plan, ce qui est nécessaire pour rester
-# le processus principal du conteneur au lieu de le laisser croire
-# que le conteneur s'est arrêté.
+# --- 5bis. Lancement du media_player natif (renderer DLNA/UPnP) ---
+# Tourne en tâche de fond, INDÉPENDAMMENT de ENABLE_MPD : c'est la nouvelle
+# capacité de ce projet (media_player natif, voir le vault "HA - Bluetooth
+# A2DP natif + Voice PE"). gmediarender expose l'enceinte comme un renderer
+# DLNA/UPnP ; Home Assistant le détecte automatiquement via l'intégration
+# core "dlna_dmr" (découverte réseau SSDP, aucune config manuelle côté HA).
+# Nécessite "host_network: true" dans config.yaml (voir commentaire associé)
+# pour que la découverte SSDP fonctionne.
+if command -v gmediarender >/dev/null 2>&1; then
+    bashio::log.info "gmediarender binary found ($(command -v gmediarender)), starting..."
+    gmediarender \
+        --gstout-audiosink=pulsesink \
+        --gstout-audiodevice="${BLUETOOTH_SINK}" \
+        --friendly-name="${SPEAKER_NAME}" \
+        --logfile=stdout \
+        &
+else
+    bashio::log.error "gmediarender binary NOT FOUND — compilation Dockerfile probablement en échec silencieux, voir le journal de build."
+fi
+# Garde-fou de diagnostic (2026-08-20) : le premier build de gmediarender
+# n'a produit aucune trace dans les logs (ni succès ni erreur) et HA n'a
+# détecté aucun nouveau renderer DLNA — ce bloc sert à confirmer noir sur
+# blanc si le binaire existe réellement avant de creuser plus loin.
+# Partage volontairement le même sink PulseAudio que MPD (si activé) :
+# PulseAudio mixe plusieurs sources sur un même sink nativement, donc les
+# deux peuvent en principe coexister sans conflit technique — à vérifier en
+# usage réel si les deux jouent en même temps (voir "Inconnues techniques"
+# dans le vault du projet).
+
+# --- 6. Lancement du processus principal ---
+if bashio::var.true "${ENABLE_MPD}"; then
+    bashio::log.info "Starting MPD..."
+    exec mpd --no-daemon /etc/mpd.conf
+    # "exec" remplace ce script par le processus MPD : MPD devient le
+    # processus principal du conteneur (utile pour que le Supervisor sache
+    # si l'add-on plante et doive être redémarré). "--no-daemon" empêche
+    # MPD de se détacher en arrière-plan, ce qui est nécessaire pour rester
+    # le processus principal du conteneur au lieu de le laisser croire
+    # que le conteneur s'est arrêté.
+else
+    bashio::log.info "enable_mpd is false: MPD not started, keeping the container alive for the Bluetooth connection and the native media_player (gmediarender, étape 5bis)."
+    exec tail -f /dev/null
+    # Garde un processus au premier plan sans rien faire : la boucle de
+    # surveillance Bluetooth (étape 5) et gmediarender (étape 5bis)
+    # continuent de tourner en tâche de fond dans les deux cas.
+fi

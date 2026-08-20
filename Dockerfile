@@ -35,6 +35,47 @@ RUN apk add --no-cache \
         # (ex: ${BLUETOOTH_SINK}) dans notre fichier mpd.conf.template
         # au démarrage, sans dépendance lourde comme Python.
 
+# --- Compilation de gmrender-resurrect (renderer DLNA/UPnP) ---
+# C'est ce qui expose l'enceinte comme un media_player natif HA (capacité
+# n°1 du projet), détecté automatiquement par l'intégration core HA
+# "dlna_dmr" — aucun composant HA à écrire ni maintenir. Pas de paquet
+# Alpine tout fait pour gmrender-resurrect (vérifié sur pkgs.alpinelinux.org
+# le 2026-08-20) : on le compile depuis les sources.
+# Noms de paquets Alpine à confirmer/ajuster au premier build réel — même
+# type d'ajustement que "bluez-deprecated" plus haut, les dépendances
+# officielles du projet (INSTALL.md) sont documentées pour Debian/Ubuntu,
+# pas pour Alpine.
+RUN apk add --no-cache --virtual .gmrender-build-deps \
+        build-base autoconf automake libtool pkgconf git \
+        libupnp-dev gstreamer-dev \
+    && apk add --no-cache \
+        gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav \
+        libupnp \
+        # Paquets nécessaires à l'EXÉCUTION (pas seulement à la compilation) :
+        # "gst-plugins-good" fournit le plugin de sortie PulseAudio
+        # (libgstpulseaudio.so, vérifié sur pkgs.alpinelinux.org — pas de
+        # paquet séparé "pulseaudio" côté GStreamer sur Alpine, contrairement
+        # à Debian), les autres couvrent le décodage des formats audio usuels
+        # (mp3 notamment, envoyé par les TTS/Assist de HA). "libupnp" (pas
+        # seulement "-dev") est nécessaire ici : sans lui, "apk del" retire
+        # aussi la bibliothèque partagée à la fin (elle n'était installée que
+        # comme dépendance de libupnp-dev) — erreur constatée au premier test
+        # réel : "gmediarender: UpnpActionRequest_get_Socket: symbol not
+        # found" au démarrage, binaire présent mais bibliothèque manquante.
+    && git clone --depth 1 https://github.com/hzeller/gmrender-resurrect.git /tmp/gmrender-resurrect \
+    && cd /tmp/gmrender-resurrect \
+    && ./autogen.sh \
+    && ./configure \
+    && make \
+    && make install \
+    && cd / \
+    && rm -rf /tmp/gmrender-resurrect \
+    && apk del .gmrender-build-deps
+# "--virtual .gmrender-build-deps" regroupe les dépendances de compilation
+# sous un nom, pour toutes les retirer d'un coup une fois le binaire
+# "gmediarender" compilé et installé (make install) — elles ne servent plus
+# à l'exécution et alourdiraient l'image pour rien.
+
 # --- Copie de nos fichiers dans l'image ---
 COPY run.sh /run.sh
 COPY mpd.conf.template /etc/mpd.conf.template

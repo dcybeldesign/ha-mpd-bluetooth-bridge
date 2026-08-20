@@ -1,5 +1,37 @@
 # Changelog
 
+## 2.1.0
+- Renamed from **"Bluetooth Speaker MPD Bridge"** to **"Bluetooth Audio
+  Bridge"** (slug `bluetooth_audio_bridge`, was `mpd_bluetooth_bridge`):
+  the add-on is no longer MPD-only. This is a breaking change for
+  existing installs: reinstall under the new slug and re-enter your
+  speaker's MAC address. `description` updated to match; the GitHub repo
+  URL itself was intentionally kept unchanged to preserve its existing
+  stars/history.
+- Added a **native `media_player` entity**, independent of MPD: the
+  Bluetooth speaker is now exposed as a DLNA/UPnP renderer via
+  [gmrender-resurrect](https://github.com/hzeller/gmrender-resurrect)
+  (compiled from source, no Alpine package exists for it), auto-discovered
+  by Home Assistant's built-in `dlna_dmr` integration over SSDP. Runs
+  alongside MPD on the same PulseAudio sink; both can play at once.
+- Added `enable_mpd` option (default `true`): lets MPD be turned off
+  entirely for users who only want the native `media_player` output. The
+  Bluetooth connection and the native `media_player` are unaffected
+  either way.
+- Added `host_network: true`: required for SSDP multicast discovery of
+  the native `media_player` to work, since it doesn't reliably cross
+  Docker's default bridge network. Documented in the README with its own
+  section, since it gives the add-on the same broad network access as
+  add-ons like Tailscale or Terminal & SSH.
+- Rewrote README.md / README.fr.md: new capabilities documented, a
+  dedicated `host_network` disclosure section, and a Voice PE section
+  scoped to what's actually possible today (scripted TTS announcements
+  to the native `media_player` work; live conversational replies from a
+  Voice PE device do not, that would require changes to the Voice PE's
+  own firmware, tracked upstream in
+  [home-assistant/discussions#689](https://github.com/orgs/home-assistant/discussions/689)).
+  French README switched to the formal "vous" register.
+
 ## 2.0.1
 - Fixed a real-world failure mode: after a burst of rapid Bluetooth
   disconnects/reconnects (e.g. a low-battery speaker), BlueZ could report

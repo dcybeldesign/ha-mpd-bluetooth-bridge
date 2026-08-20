@@ -5,23 +5,34 @@
 # que le Supervisor HAOS lit pour savoir comment construire et lancer
 # le conteneur, et quelles permissions système lui accorder.
 
-name: "Bluetooth Speaker MPD Bridge"
+name: "Bluetooth Audio Bridge"
 # Nom affiché dans l'interface Home Assistant (Paramètres > Applications).
-# Générique : fonctionne avec n'importe quelle enceinte Bluetooth A2DP,
-# pas seulement une JBL (ancien nom : "MPD JBL Bridge").
+# Renommé le 2026-08-20 (choix validé avec l'utilisateur) : l'add-on
+# n'est plus seulement un pont MPD, il expose aussi un media_player natif
+# (DLNA) — "Bluetooth Audio Bridge" reste proche de l'ancien nom
+# ("Bluetooth Speaker MPD Bridge") sans se limiter à MPD.
+# Ancien nom : "Bluetooth Speaker MPD Bridge" (ancien nom encore avant :
+# "MPD JBL Bridge").
 
-version: "2.0.1"
+version: "2.1.0"
 # Version de l'add-on. À incrémenter à chaque modification si on veut
 # que le Supervisor propose une "mise à jour" plus tard.
 # Bump en 2.0.0 : changement de nom/slug (rupture de compatibilité pour
 # quiconque avait déjà installé la v1 sous l'ancien slug "mpd_jbl_bridge").
 # Bump en 2.0.1 : correctif du profil audio PulseAudio (voir CHANGELOG).
+# Bump en 2.1.0 (2026-08-20) : enable_mpd + media_player natif (Phase 1/2)
+# + renommage en "Bluetooth Audio Bridge" (slug bluetooth_audio_bridge).
 
-slug: "mpd_bluetooth_bridge"
+slug: "bluetooth_audio_bridge"
 # Identifiant technique unique de l'add-on (utilisé dans les URLs internes,
 # les noms de conteneur Docker, etc.). Pas d'espace, pas d'accent.
+# Changé le 2026-08-20 depuis "mpd_bluetooth_bridge" en même temps que le
+# nom (voir ci-dessus) — accessoirement, ce changement de slug contourne
+# aussi un bug de cache Supervisor découvert sur l'instance HA de test qui
+# bloquait "mpd_bluetooth_bridge" sur un très vieux build (voir le journal
+# du projet dans le vault pour le détail).
 
-description: "MPD server that outputs audio to a Bluetooth speaker, exposed to Music Assistant via the MPD protocol."
+description: "Connect any Bluetooth speaker to Home Assistant as a native media_player, with optional MPD/Music Assistant support."
 # En anglais : c'est ce texte qui s'affiche dans le magasin d'add-ons HA,
 # dont l'audience est la communauté internationale, pas seulement toi.
 
@@ -70,6 +81,16 @@ host_dbus: true
 # conteneur, exactement comme `bluetoothctl` le ferait depuis un shell SSH.
 
 # --- Réseau ---
+host_network: true
+# Nécessaire pour le media_player natif (DLNA/UPnP, voir gmediarender dans
+# run.sh) : la découverte automatique par Home Assistant repose sur SSDP,
+# un protocole multicast qui ne traverse pas correctement le réseau bridge
+# isolé de Docker. Avec host_network, le conteneur utilise directement la
+# pile réseau de l'hôte — l'add-on voit (et est visible sur) tout le réseau
+# local, pas seulement les ports explicitement mappés. Conséquence directe :
+# la table "ports" ci-dessous devient purement documentaire (host_network
+# expose déjà tous les ports du conteneur tels quels, sans mapping Docker).
+
 ports:
   6600/tcp: 6600
   # MPD écoute par défaut sur le port 6600 (protocole texte MPD).
@@ -90,9 +111,13 @@ options:
   bluetooth_mac: ""
   speaker_name: "Bluetooth Speaker"
   reconnect_interval: 30
+  enable_mpd: true
   # Pas de valeur par défaut pour bluetooth_mac : c'est un champ obligatoire
   # (voir schema ci-dessous, pas de "?" après "match(...)"), l'utilisateur
   # DOIT renseigner l'adresse MAC de sa propre enceinte avant de démarrer.
+  # enable_mpd par défaut à true : préserve le comportement actuel (musique
+  # via MPD/Music Assistant) pour quiconque utilise déjà ce chemin — le
+  # media_player natif à venir (Phase 2) sera un ajout, pas un remplacement.
 
 schema:
   bluetooth_mac: "match(^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$)"
@@ -109,3 +134,8 @@ schema:
   # Bluetooth. Bornes raisonnables : entre 10s (réactif mais plus de trafic
   # Bluetooth) et 300s (5 min, économe mais reconnexion plus lente après
   # une coupure).
+
+  enable_mpd: "bool"
+  # Permet de désactiver complètement le serveur MPD (ex: si seul le futur
+  # media_player natif est souhaité). L'enceinte reste connectée en
+  # Bluetooth dans les deux cas ; seul le lancement de MPD est conditionné.
