@@ -148,11 +148,23 @@ ensure_audio_sink
 # Nécessite "host_network: true" dans config.yaml (voir commentaire associé)
 # pour que la découverte SSDP fonctionne.
 if command -v gmediarender >/dev/null 2>&1; then
-    bashio::log.info "gmediarender binary found ($(command -v gmediarender)), starting..."
+    # Sans --uuid, gmediarender retombe sur une valeur FIXE codée en dur
+    # ("GMediaRender-1_0-000-000-002"), identique pour toute installation.
+    # Découvert en testant une deuxième instance en parallèle (voir vault,
+    # "Test d'installation réelle") : Home Assistant déduplique les
+    # renderers DLNA par UUID, donc deux enceintes différentes sur deux
+    # installations de cet add-on se retrouveraient fusionnées en une
+    # seule entité media_player. On dérive ici un UUID stable à partir de
+    # bluetooth_mac (même enceinte → même UUID à chaque redémarrage,
+    # enceintes différentes → UUID différents).
+    BT_MAC_HASH=$(echo -n "${BT_MAC}" | md5sum | cut -c1-32)
+    GMEDIARENDER_UUID="${BT_MAC_HASH:0:8}-${BT_MAC_HASH:8:4}-${BT_MAC_HASH:12:4}-${BT_MAC_HASH:16:4}-${BT_MAC_HASH:20:12}"
+    bashio::log.info "gmediarender binary found ($(command -v gmediarender)), starting with uuid=${GMEDIARENDER_UUID}..."
     gmediarender \
         --gstout-audiosink=pulsesink \
         --gstout-audiodevice="${BLUETOOTH_SINK}" \
         --friendly-name="${SPEAKER_NAME}" \
+        --uuid="${GMEDIARENDER_UUID}" \
         --logfile=stdout \
         &
 else
