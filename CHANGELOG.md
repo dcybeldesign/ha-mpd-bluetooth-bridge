@@ -14,6 +14,11 @@
   (compiled from source, no Alpine package exists for it), auto-discovered
   by Home Assistant's built-in `dlna_dmr` integration over SSDP. Runs
   alongside MPD on the same PulseAudio sink; both can play at once.
+  `gmediarender` is now given a `--uuid` derived from `bluetooth_mac`
+  (stable per speaker, distinct across speakers): without it, every
+  install advertised the same fixed default UUID, so two installs for
+  two different speakers would collapse into a single `media_player`
+  entity instead of two (found and fixed during real-hardware testing).
 - Added `enable_mpd` option (default `true`): lets MPD be turned off
   entirely for users who only want the native `media_player` output. The
   Bluetooth connection and the native `media_player` are unaffected
