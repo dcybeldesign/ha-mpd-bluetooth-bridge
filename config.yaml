@@ -14,7 +14,7 @@ name: "Bluetooth Audio Bridge"
 # Ancien nom : "Bluetooth Speaker MPD Bridge" (ancien nom encore avant :
 # "MPD JBL Bridge").
 
-version: "2.1.0"
+version: "2.2.0"
 # Version de l'add-on. À incrémenter à chaque modification si on veut
 # que le Supervisor propose une "mise à jour" plus tard.
 # Bump en 2.0.0 : changement de nom/slug (rupture de compatibilité pour
@@ -22,6 +22,9 @@ version: "2.1.0"
 # Bump en 2.0.1 : correctif du profil audio PulseAudio (voir CHANGELOG).
 # Bump en 2.1.0 (2026-08-20) : enable_mpd + media_player natif (Phase 1/2)
 # + renommage en "Bluetooth Audio Bridge" (slug bluetooth_audio_bridge).
+# Bump en 2.2.0 (2026-08-22) : option `default_volume`, correctif du
+# volume/mute du sink PulseAudio resté silencieux (voir CHANGELOG,
+# signalé par la GitHub issue #1).
 
 slug: "bluetooth_audio_bridge"
 # Identifiant technique unique de l'add-on (utilisé dans les URLs internes,
@@ -112,12 +115,15 @@ options:
   speaker_name: "Bluetooth Speaker"
   reconnect_interval: 30
   enable_mpd: true
+  default_volume: 70
   # Pas de valeur par défaut pour bluetooth_mac : c'est un champ obligatoire
   # (voir schema ci-dessous, pas de "?" après "match(...)"), l'utilisateur
   # DOIT renseigner l'adresse MAC de sa propre enceinte avant de démarrer.
   # enable_mpd par défaut à true : préserve le comportement actuel (musique
   # via MPD/Music Assistant) pour quiconque utilise déjà ce chemin — le
   # media_player natif à venir (Phase 2) sera un ajout, pas un remplacement.
+  # default_volume à 70 : valeur de repli raisonnable, ni inaudible ni trop
+  # fort d'office (voir schema et run.sh pour son usage exact).
 
 schema:
   bluetooth_mac: "match(^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$)"
@@ -139,3 +145,13 @@ schema:
   # Permet de désactiver complètement le serveur MPD (ex: si seul le futur
   # media_player natif est souhaité). L'enceinte reste connectée en
   # Bluetooth dans les deux cas ; seul le lancement de MPD est conditionné.
+
+  default_volume: "int(1,100)"
+  # Volume (%) restauré automatiquement sur le sink PulseAudio de l'enceinte
+  # si celui-ci est détecté muet ou à 0% (voir run.sh, ensure_audio_sink) —
+  # un cas signalé par un utilisateur (GitHub issue #1) : ce sink peut rester
+  # silencieux indéfiniment (y compris après un reboot) sans qu'aucune
+  # erreur ne remonte, si rien d'autre sur le système ne l'a jamais remonté.
+  # N'écrase jamais un volume choisi par l'utilisateur tant qu'il n'est pas
+  # à 0% — pas de reset périodique intrusif. Minimum à 1 (pas 0) pour éviter
+  # une configuration qui neutraliserait silencieusement ce correctif.

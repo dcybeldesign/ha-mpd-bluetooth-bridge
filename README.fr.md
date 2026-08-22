@@ -191,6 +191,7 @@ l'option `bluetooth_mac` de l'add-on à l'étape suivante.
 | `speaker_name` | Nom cosmétique des sorties (MPD et le nom affiché du `media_player`). | `Bluetooth Speaker` |
 | `reconnect_interval` | Secondes entre deux vérifications de la connexion Bluetooth (10-300). | `30` |
 | `enable_mpd` | Démarre ou non le serveur MPD. La connexion Bluetooth et le `media_player` natif ne sont pas affectés dans un cas comme dans l'autre ; désactivez cette option si vous ne voulez que le `media_player` natif et n'utilisez pas Music Assistant. | `true` |
+| `default_volume` | Volume (%) restauré automatiquement si le sink PulseAudio de l'enceinte est détecté muet ou à 0% (sinon reste silencieux indéfiniment, y compris après un redémarrage). N'écrase jamais un volume que vous avez choisi tant qu'il n'est pas à 0%. | `70` |
 
 ## Sortie `media_player` native (DLNA/UPnP)
 

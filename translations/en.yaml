@@ -23,3 +23,10 @@ configuration:
       provider. The Bluetooth connection and the native media_player
       output are unaffected either way; turn this off if you only want
       the native media_player and don't use Music Assistant.
+  default_volume:
+    name: Default volume (%)
+    description: >-
+      Volume automatically restored if the speaker's PulseAudio sink is
+      ever found muted or at 0% (which otherwise stays silent
+      indefinitely, even across reboots, with no visible error). Never
+      overrides a volume you've deliberately set as long as it isn't 0%.

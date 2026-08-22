@@ -52,6 +52,11 @@ ENABLE_MPD=$(bashio::config 'enable_mpd')
 # nécessaire dans tous les cas — seule la génération de mpd.conf et le
 # lancement de MPD (étapes 3 et 6) sont conditionnés par cette option.
 
+DEFAULT_VOLUME=$(bashio::config 'default_volume')
+# Volume (%) restauré automatiquement si le sink PulseAudio de l'enceinte
+# est détecté muet ou à 0% (voir ensure_audio_sink, étape 4bis). Par défaut
+# 70 (voir config.yaml).
+
 bashio::log.info "Target speaker: ${SPEAKER_NAME} (${BT_MAC})"
 
 # --- 2. Calcul du nom du sink PulseAudio correspondant ---
@@ -91,7 +96,7 @@ connect_speaker() {
         || bashio::log.warning "Failed to connect to ${SPEAKER_NAME} — will retry in the monitoring loop."
 }
 
-# --- 4bis. Garde-fou : forcer le profil audio PulseAudio si besoin ---
+# --- 4bis. Garde-fou : forcer le profil et le volume audio si besoin ---
 # Cas observé en conditions réelles : après une série rapprochée de
 # déconnexions/reconnexions Bluetooth (typiquement une enceinte à
 # batterie faible), BlueZ finit par rapporter la connexion comme stable
@@ -103,16 +108,44 @@ connect_speaker() {
 # lui-même : on ne peut pas empêcher que ça arrive, seulement le détecter
 # et s'en remettre automatiquement.
 ensure_audio_sink() {
-    if pactl list short sinks 2>/dev/null | grep -q "${BLUETOOTH_SINK}"; then
+    if ! pactl list short sinks 2>/dev/null | grep -q "${BLUETOOTH_SINK}"; then
+        # Le sink attendu n'existe pas : on force le profil. Sans effet si la
+        # carte PulseAudio n'a pas encore été créée par BlueZ (juste après une
+        # connexion très récente) — la boucle de surveillance réessaiera au
+        # prochain passage.
+        if pactl set-card-profile "${BLUETOOTH_CARD}" a2dp_sink 2>/dev/null; then
+            bashio::log.warning "Bluetooth audio sink was missing, forced PulseAudio profile back to a2dp_sink."
+        fi
         return
     fi
-    # Le sink attendu n'existe pas : on force le profil. Sans effet si la
-    # carte PulseAudio n'a pas encore été créée par BlueZ (juste après une
-    # connexion très récente) — la boucle de surveillance réessaiera au
-    # prochain passage.
-    if pactl set-card-profile "${BLUETOOTH_CARD}" a2dp_sink 2>/dev/null; then
-        bashio::log.warning "Bluetooth audio sink was missing, forced PulseAudio profile back to a2dp_sink."
+
+    # Le sink existe mais peut être silencieux (muet, ou volume à 0%) sans
+    # qu'aucune erreur ne remonte côté Bluetooth ou PulseAudio — signalé par
+    # un utilisateur (GitHub issue #1) : ce volume/mute au niveau du sink
+    # (matériel) est un réglage distinct du volume interne de gmediarender
+    # (qui ne contrôle que son propre flux, voir étape 5bis) — rien dans ce
+    # script ne le touchait jusqu'ici. Deux vérifications séparées :
+    # `set-sink-volume` seul ne démute pas un sink déjà muet.
+    if pactl get-sink-mute "${BLUETOOTH_SINK}" 2>/dev/null | grep -q "^Mute: yes"; then
+        if pactl set-sink-mute "${BLUETOOTH_SINK}" 0 2>/dev/null; then
+            bashio::log.warning "Bluetooth audio sink was muted, unmuted it."
+        fi
     fi
+
+    # Volume brut du premier canal, extrait avant le premier "/" de la
+    # sortie de `get-sink-volume` : plus fiable qu'un grep sur "0%", qui
+    # matcherait aussi "100%" (qui se termine littéralement par "0%").
+    local raw_volume
+    raw_volume=$(pactl get-sink-volume "${BLUETOOTH_SINK}" 2>/dev/null \
+        | awk -F'/' '/Volume:/ { gsub(/[^0-9]/, "", $1); print $1; exit }') || true
+    if [ "${raw_volume:-}" = "0" ]; then
+        if pactl set-sink-volume "${BLUETOOTH_SINK}" "${DEFAULT_VOLUME}%" 2>/dev/null; then
+            bashio::log.warning "Bluetooth audio sink was silent (0% volume), reset to ${DEFAULT_VOLUME}%."
+        fi
+    fi
+    # N'écrase jamais un volume non nul choisi par l'utilisateur (ex. 20%) :
+    # seul le silence total (0% ou muet) déclenche une correction, pas de
+    # reset périodique intrusif à chaque passage de la boucle.
 }
 
 # On tente une première connexion avant même de démarrer MPD, pour que

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.2.0
+- Fixed a real-world failure mode reported via
+  [GitHub issue #1](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/issues/1):
+  the speaker's PulseAudio sink could stay muted or at 0% volume
+  indefinitely (even across reboots) with no visible error, if nothing
+  else on the system had ever set it — the add-on never touched sink
+  volume/mute itself, only the `a2dp_sink` profile (see 2.0.1). The
+  monitoring loop now also unmutes the sink and restores it to
+  `default_volume` whenever it's found silent, without ever overriding a
+  volume you've deliberately set as long as it isn't 0%.
+- Added `default_volume` option (default `70`): the level restored by the
+  fix above. Configurable rather than hardcoded, since a safe volume
+  varies a lot by speaker.
+- Adopted `set -euo pipefail` in `run.sh` (suggested by a reader on the
+  official HA forum): catches more failure modes than `set -e` alone.
+  Verified bashio's own internals already run under the same strict mode.
+
 ## 2.1.0
 - Renamed from **"Bluetooth Speaker MPD Bridge"** to **"Bluetooth Audio
   Bridge"** (slug `bluetooth_audio_bridge`, was `mpd_bluetooth_bridge`):
