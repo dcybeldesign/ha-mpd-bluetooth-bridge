@@ -305,6 +305,17 @@ l'extérieur sans ajouter vos propres protections devant.
   vérifiez que `enable_mpd` est activé et que vous avez bien utilisé le
   *nom d'hôte interne* de l'add-on, pas l'adresse IP de l'hôte (voir
   étape 5 de l'Installation).
+- **Grésillements, saccades ou micro-coupures du son, notamment sur un
+  Raspberry Pi 4** : le Bluetooth et le Wi-Fi intégrés du Pi 4 partagent
+  la même antenne et la même bande 2.4GHz, ce qui provoque couramment ce
+  genre de défaut en usage réel — c'est une limite matérielle, pas
+  quelque chose que cet add-on peut corriger côté logiciel. Un dongle
+  Bluetooth USB externe bon marché avec sa propre antenne (par exemple à
+  base du chipset CSR8510, très répandu) contourne le problème de façon
+  fiable : BlueZ le prend en charge automatiquement comme contrôleur
+  supplémentaire, aucun changement de configuration nécessaire ici.
+  Lancez `bluetoothctl list` pour confirmer qu'il est bien actif comme
+  contrôleur `[default]`.
 
 ## Avertissement
 

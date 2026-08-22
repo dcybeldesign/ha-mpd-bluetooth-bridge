@@ -283,6 +283,16 @@ protections in front of it.
 - **Music Assistant shows the MPD player as unavailable**: double-check
   `enable_mpd` is on and you used the add-on's *internal hostname*, not
   the host's IP address (see step 5 in Installation).
+- **Crackling, stuttering, or brief audio dropouts, especially on a
+  Raspberry Pi 4**: the Pi 4's onboard Bluetooth and Wi-Fi share the same
+  2.4GHz radio and antenna, which commonly causes exactly this kind of
+  glitch under real-world use — it's a hardware limitation, not something
+  this add-on can fix in software. A cheap external USB Bluetooth dongle
+  with its own antenna (e.g. one based on the common CSR8510 chipset)
+  reliably works around it: BlueZ picks it up automatically as an
+  additional controller, no configuration change needed here. Run
+  `bluetoothctl list` to confirm it's active as the `[default]`
+  controller.
 
 ## Disclaimer
 
