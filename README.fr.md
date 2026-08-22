@@ -142,12 +142,18 @@ l'option `bluetooth_mac` de l'add-on à l'étape suivante.
 
 ## Installation
 
-1. Ajoutez l'URL GitHub de ce dépôt comme dépôt d'add-ons personnalisé
-   dans Home Assistant (**Paramètres → Applications → Magasin
-   d'applications → ⋮ (menu en haut à droite) → Dépôts**, collez l'URL,
-   fermez), ou copiez manuellement ce dossier vers
-   `/addons/bluetooth_audio_bridge` sur votre hôte si vous n'utilisez pas
-   la méthode par dépôt.
+Le plus rapide : cliquez sur le bouton ci-dessous, il ouvre votre instance
+Home Assistant avec l'URL de ce dépôt déjà pré-remplie, il ne reste plus
+qu'à confirmer l'ajout.
+
+[![Ajouter le dépôt sur mon Home Assistant][add-repo-shield]][add-repo-badge]
+
+1. Si vous n'avez pas utilisé le bouton ci-dessus, ajoutez manuellement
+   l'URL GitHub de ce dépôt comme dépôt d'add-ons personnalisé dans Home
+   Assistant (**Paramètres → Applications → Magasin d'applications →
+   ⋮ (menu en haut à droite) → Dépôts**, collez l'URL, fermez), ou copiez
+   manuellement ce dossier vers `/addons/bluetooth_audio_bridge` sur votre
+   hôte si vous n'utilisez pas la méthode par dépôt.
 2. Actualisez le magasin d'applications (même menu ⋮ → Rechercher des
    mises à jour) pour que l'add-on apparaisse. Il sera listé sous une
    section nommée d'après ce dépôt (ou sous "Applications locales" si
@@ -328,3 +334,6 @@ Si cet add-on vous a été utile, vous pouvez soutenir son développement :
 ## Licence
 
 [MIT](LICENSE)
+
+[add-repo-shield]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
+[add-repo-badge]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fdcybeldesign%2Fha-mpd-bluetooth-bridge

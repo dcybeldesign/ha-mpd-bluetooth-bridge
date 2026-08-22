@@ -135,11 +135,16 @@ quit
 
 ## Installation
 
-1. Add this repository's GitHub URL as a custom repository in Home
-   Assistant (**Settings → Apps → App store → ⋮ (top-right menu) →
-   Repositories**, paste the URL, close), or copy this folder manually to
-   `/addons/bluetooth_audio_bridge` on your host if you're not using the
-   repository method.
+Fastest way: click the button below, it opens your Home Assistant instance
+with this repository's URL pre-filled, just confirm to add it.
+
+[![Add repository on my Home Assistant][add-repo-shield]][add-repo-badge]
+
+1. If you didn't use the button above, add this repository's GitHub URL as
+   a custom repository in Home Assistant manually (**Settings → Apps →
+   App store → ⋮ (top-right menu) → Repositories**, paste the URL, close),
+   or copy this folder manually to `/addons/bluetooth_audio_bridge` on
+   your host if you're not using the repository method.
 2. Refresh the app store (same ⋮ menu → Check for updates) so the
    add-on appears. It'll show up under a section named after this
    repository (or under "Local apps" if you copied the folder
@@ -305,3 +310,6 @@ If this add-on has been useful to you, you can support its development:
 ## License
 
 [MIT](LICENSE)
+
+[add-repo-shield]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
+[add-repo-badge]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fdcybeldesign%2Fha-mpd-bluetooth-bridge
