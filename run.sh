@@ -12,9 +12,16 @@
 # par l'image de base des add-ons Home Assistant, notamment pour lire
 # les options définies dans config.yaml.
 
-set -e
-# Arrête immédiatement le script si une commande échoue de façon
+set -euo pipefail
+# -e : arrête immédiatement le script si une commande échoue de façon
 # inattendue (évite de continuer dans un état incohérent).
+# -u : arrête le script si une variable non définie est utilisée.
+# -o pipefail : dans un pipe (cmd1 | cmd2), remonte l'échec de cmd1 même
+# si cmd2 réussit (sans ça, seul le code de sortie de cmd2 compte).
+# Suggéré par un lecteur sur le forum officiel HA (2026-08-22) ; vérifié
+# avant application que bashio active déjà ces trois options en interne
+# (voir lib/bashio sur github.com/hassio-addons/bashio) et qu'aucune
+# variable de ce script n'est lue avant d'être assignée.
 
 mkdir -p /var/lib/mpd/playlists /var/lib/mpd/music
 # Recréé au démarrage du conteneur (pas seulement à la construction de
