@@ -90,10 +90,22 @@ fi
 # surveillance plus bas.
 connect_speaker() {
     bashio::log.info "Connecting to ${SPEAKER_NAME} (${BT_MAC})..."
-    bluetoothctl power on
-    bluetoothctl connect "${BT_MAC}" \
-        && bashio::log.info "${SPEAKER_NAME} connected." \
-        || bashio::log.warning "Failed to connect to ${SPEAKER_NAME} — will retry in the monitoring loop."
+    # "|| true" sur les trois lignes ci-dessous : avec "set -e" en tête de
+    # script, la moindre commande qui renvoie un code non nul (y compris
+    # bashio::log.* lui-même, ou "bluetoothctl power on" seul, qui n'était
+    # pas protégé jusqu'ici contrairement à "connect" juste en dessous) tue
+    # tout le conteneur immédiatement — sans le moindre message d'erreur,
+    # juste après le log "Connecting to...". C'est exactement le crash
+    # silencieux et systématique observé en 2026-09 (voir vault, incident
+    # du 2026-09-01) : un échec de connexion à l'enceinte ne doit jamais
+    # faire tomber le script, seulement être loggé et retenté par la boucle
+    # de surveillance (étape 5).
+    bluetoothctl power on || true
+    if bluetoothctl connect "${BT_MAC}"; then
+        bashio::log.info "${SPEAKER_NAME} connected." || true
+    else
+        bashio::log.warning "Failed to connect to ${SPEAKER_NAME} — will retry in the monitoring loop." || true
+    fi
 }
 
 # --- 4bis. Garde-fou : forcer le profil et le volume audio si besoin ---
@@ -150,7 +162,11 @@ ensure_audio_sink() {
 
 # On tente une première connexion avant même de démarrer MPD, pour que
 # le sink existe déjà quand MPD essaiera de s'y attacher.
-connect_speaker
+# "|| true" : filet de sécurité supplémentaire, au cas où connect_speaker
+# retournerait quand même un code non nul pour une raison non couverte
+# ci-dessus — un appel de fonction "nu" comme celui-ci est justement ce
+# qui déclenche "set -e" si son code de sortie est non nul.
+connect_speaker || true
 sleep 2
 # Laisse le temps à PulseAudio d'enregistrer la carte Bluetooth après la
 # connexion avant de vérifier/forcer son profil.
@@ -165,8 +181,8 @@ ensure_audio_sink
     while true; do
         sleep "${RECONNECT_INTERVAL}"
         if ! bluetoothctl info "${BT_MAC}" | grep -q "Connected: yes"; then
-            bashio::log.warning "${SPEAKER_NAME} disconnected, attempting to reconnect..."
-            connect_speaker
+            bashio::log.warning "${SPEAKER_NAME} disconnected, attempting to reconnect..." || true
+            connect_speaker || true
             sleep 2
         fi
         # Vérifié à chaque passage, pas seulement après une reconnexion :
