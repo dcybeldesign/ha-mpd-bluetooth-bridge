@@ -248,11 +248,13 @@ construites pour `aarch64`, `amd64`, `armv7`, `armhf` et `i386` (voir
 `build.yaml`).
 
 Ceci dit, seul le fonctionnement sur Raspberry Pi 4 a été vérifié en
-conditions réelles. Ça *devrait* marcher sans modification sur toute
-installation HAOS avec un adaptateur Bluetooth fonctionnel (autres
-modèles de Pi, installations x86 type NUC, etc.), mais ce n'est pas
-encore testé partout. Si vous l'essayez sur un autre matériel, un retour
-(positif ou négatif) via une issue est le bienvenu.
+conditions réelles, plus un retour communautaire sur un **Chromebox**
+(x86, image `amd64`, avec un dongle USB Bluetooth 6.0) qui fonctionne
+bien. Ça *devrait* marcher sans modification sur toute installation HAOS
+avec un adaptateur Bluetooth fonctionnel (autres modèles de Pi,
+installations x86 type NUC, etc.), mais ce n'est pas encore testé
+partout. Si vous l'essayez sur un autre matériel, un retour (positif ou
+négatif) via une issue est le bienvenu.
 
 ## Remarque sécurité
 

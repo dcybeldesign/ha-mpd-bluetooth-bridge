@@ -230,10 +230,12 @@ underlying hardware. Multi-architecture images are built for `aarch64`,
 `amd64`, `armv7`, `armhf`, and `i386` (see `build.yaml`).
 
 That said, this has only been verified in real conditions on a Raspberry
-Pi 4. It *should* work unmodified on any HAOS install with a functioning
-Bluetooth adapter (other Pi models, x86 NUC-style installs, etc.), but
-hasn't been tested on all of them yet. If you try it on different
-hardware, please open an issue with the result, good or bad.
+Pi 4, plus one community report on a **Chromebox** (x86, `amd64` image,
+with a Bluetooth 6.0 USB dongle) working well. It *should* work unmodified
+on any HAOS install with a functioning Bluetooth adapter (other Pi models,
+x86 NUC-style installs, etc.), but hasn't been tested on all of them yet.
+If you try it on different hardware, please open an issue with the
+result, good or bad.
 
 ## Security note
 
