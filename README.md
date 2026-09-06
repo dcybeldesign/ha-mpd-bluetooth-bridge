@@ -185,6 +185,7 @@ with this repository's URL pre-filled, just confirm to add it.
 | `reconnect_interval` | Seconds between Bluetooth connection checks (10-300). | `30` |
 | `enable_mpd` | Whether to start the MPD server. The Bluetooth connection and the native `media_player` are unaffected either way; turn this off if you only want the native `media_player` output and don't use Music Assistant. | `true` |
 | `default_volume` | Volume (%) automatically restored if the speaker's PulseAudio sink is ever found muted or at 0% (otherwise stays silent indefinitely, even across reboots). Never overrides a volume you've deliberately set as long as it isn't 0%. | `70` |
+| `extra_speakers` | Optional list of additional speakers (`mac` + `name` each), editable straight from the Configuration tab. See [Multiple speakers](#multiple-speakers). | *(empty)* |
 
 ## Native `media_player` output (DLNA/UPnP)
 
@@ -198,6 +199,45 @@ Once the entity exists, you can send audio to it like any other
 `media_player`: from the media player card, a script, or an automation
 using the `tts.speak` or `media_player.play_media` service with
 `media_player_entity_id` targeting this entity.
+
+## Multiple speakers
+
+You're not limited to one Bluetooth speaker. The `extra_speakers` option
+(a list of `{mac, name}` entries, added straight from the add-on's
+Configuration tab — no YAML editing needed) lets you register additional
+speakers alongside the primary one (`bluetooth_mac`/`speaker_name`). Each
+speaker gets:
+
+- its own Bluetooth connection, monitored and reconnected independently
+  of the others;
+- its own PulseAudio sink;
+- its own native `media_player` entity in Home Assistant, so you can pick
+  exactly which speaker a given `play_media`/`tts.speak` call goes to.
+
+This gives you multiple independently selectable outputs, not
+synchronized multi-room playback: each speaker plays whatever you send
+to it, on its own — there's no built-in way to send the same audio, in
+sync, to several speakers at once.
+
+MPD (and by extension Music Assistant's "MPD Players" provider) stays
+attached to the primary speaker only; there's no clean way to expose
+several MPD outputs as separate `media_player` entities, so extra
+speakers are only reachable through the native `media_player` path.
+
+**Music Assistant shows extra speakers with a generic or duplicate name**
+(e.g. two speakers both labeled "Bluetooth Speaker"): this is a
+naming/caching quirk in Music Assistant's own DLNA player discovery, not
+something this add-on controls — Home Assistant itself already shows the
+correct name (`speaker_name` for the primary speaker, or the `name` you
+set in `extra_speakers`). If Music Assistant confuses two players, rename
+them directly there: **Music Assistant → Settings → Players → pick the
+player → the pencil icon** next to its name.
+
+If you add a speaker while the add-on is already running and its
+`media_player` entity doesn't show up after a few minutes, try a full
+**Home Assistant Core restart** (Settings → System → Restart, not just
+the add-on) — this forces a fresh SSDP scan and reliably surfaced it in
+our testing.
 
 ## Voice PE
 
@@ -285,6 +325,10 @@ protections in front of it.
 - **Music Assistant shows the MPD player as unavailable**: double-check
   `enable_mpd` is on and you used the add-on's *internal hostname*, not
   the host's IP address (see step 5 in Installation).
+- **A newly added extra speaker's `media_player` never shows up**: same
+  root cause as above, but specifically after adding a speaker to an
+  already-running install — try a full Home Assistant **Core** restart
+  (not just the add-on), see [Multiple speakers](#multiple-speakers).
 - **Crackling, stuttering, or brief audio dropouts, especially on a
   Raspberry Pi 4**: the Pi 4's onboard Bluetooth and Wi-Fi share the same
   2.4GHz radio and antenna, which commonly causes exactly this kind of

@@ -198,6 +198,7 @@ qu'à confirmer l'ajout.
 | `reconnect_interval` | Secondes entre deux vérifications de la connexion Bluetooth (10-300). | `30` |
 | `enable_mpd` | Démarre ou non le serveur MPD. La connexion Bluetooth et le `media_player` natif ne sont pas affectés dans un cas comme dans l'autre ; désactivez cette option si vous ne voulez que le `media_player` natif et n'utilisez pas Music Assistant. | `true` |
 | `default_volume` | Volume (%) restauré automatiquement si le sink PulseAudio de l'enceinte est détecté muet ou à 0% (sinon reste silencieux indéfiniment, y compris après un redémarrage). N'écrase jamais un volume que vous avez choisi tant qu'il n'est pas à 0%. | `70` |
+| `extra_speakers` | Liste optionnelle d'enceintes supplémentaires (`mac` + `name` chacune), ajoutables directement depuis l'onglet Configuration. Voir [Plusieurs enceintes](#plusieurs-enceintes). | *(vide)* |
 
 ## Sortie `media_player` native (DLNA/UPnP)
 
@@ -213,6 +214,49 @@ n'importe quel `media_player` : depuis la carte lecteur multimédia, un
 script, ou une automatisation utilisant le service `tts.speak` ou
 `media_player.play_media` avec `media_player_entity_id` ciblant cette
 entité.
+
+## Plusieurs enceintes
+
+Vous n'êtes pas limité à une seule enceinte Bluetooth. L'option
+`extra_speakers` (une liste d'entrées `{mac, name}`, ajoutables
+directement depuis l'onglet Configuration de l'add-on — pas besoin
+d'éditer du YAML) permet d'enregistrer des enceintes supplémentaires en
+plus de la principale (`bluetooth_mac`/`speaker_name`). Chaque enceinte
+obtient :
+
+- sa propre connexion Bluetooth, surveillée et reconnectée
+  indépendamment des autres ;
+- son propre sink PulseAudio ;
+- sa propre entité `media_player` native dans Home Assistant, pour
+  choisir précisément vers quelle enceinte envoyer un appel
+  `play_media`/`tts.speak`.
+
+Ça donne plusieurs sorties sélectionnables indépendamment, pas une
+lecture multi-room synchronisée : chaque enceinte joue ce qu'on lui
+envoie, de son côté — il n'y a pas de mécanisme intégré pour envoyer le
+même son, en synchro, à plusieurs enceintes en même temps.
+
+MPD (et donc le fournisseur "MPD Players" de Music Assistant) reste
+attaché uniquement à l'enceinte principale : il n'y a pas de moyen propre
+d'exposer plusieurs sorties MPD comme des entités `media_player`
+distinctes, donc les enceintes supplémentaires ne sont accessibles que
+via le chemin `media_player` natif.
+
+**Music Assistant affiche des enceintes supplémentaires avec un nom
+générique ou dupliqué** (par exemple deux enceintes toutes les deux
+nommées "Bluetooth Speaker") : c'est un souci de nommage/cache propre à
+la découverte DLNA de Music Assistant lui-même, pas quelque chose que cet
+add-on contrôle — Home Assistant affiche déjà le bon nom de son côté
+(`speaker_name` pour l'enceinte principale, ou le `name` renseigné dans
+`extra_speakers`). Si Music Assistant confond deux lecteurs, renommez-les
+directement là-bas : **Music Assistant → Paramètres → Lecteurs →
+sélectionnez le lecteur → l'icône crayon** à côté de son nom.
+
+Si vous ajoutez une enceinte pendant que l'add-on tourne déjà et que son
+entité `media_player` n'apparaît pas au bout de quelques minutes, essayez
+un **redémarrage complet de Home Assistant Core** (Paramètres > Système >
+Redémarrer, pas seulement l'add-on) — ça force un nouveau scan SSDP et a
+fiablement fait apparaître l'entité lors de nos tests.
 
 ## Voice PE
 
@@ -307,6 +351,12 @@ l'extérieur sans ajouter vos propres protections devant.
   vérifiez que `enable_mpd` est activé et que vous avez bien utilisé le
   *nom d'hôte interne* de l'add-on, pas l'adresse IP de l'hôte (voir
   étape 5 de l'Installation).
+- **L'entité `media_player` d'une enceinte supplémentaire ajoutée
+  n'apparaît jamais** : même cause que ci-dessus, mais spécifiquement
+  après avoir ajouté une enceinte à une installation déjà en cours de
+  fonctionnement — essayez un redémarrage complet de **Core** Home
+  Assistant (pas seulement l'add-on), voir
+  [Plusieurs enceintes](#plusieurs-enceintes).
 - **Grésillements, saccades ou micro-coupures du son, notamment sur un
   Raspberry Pi 4** : le Bluetooth et le Wi-Fi intégrés du Pi 4 partagent
   la même antenne et la même bande 2.4GHz, ce qui provoque couramment ce

@@ -14,7 +14,7 @@ name: "Bluetooth Audio Bridge"
 # Ancien nom : "Bluetooth Speaker MPD Bridge" (ancien nom encore avant :
 # "MPD JBL Bridge").
 
-version: "2.3.0-multi-speakers-test"
+version: "2.3.0"
 # Version de l'add-on. À incrémenter à chaque modification si on veut
 # que le Supervisor propose une "mise à jour" plus tard.
 # Bump en 2.0.0 : changement de nom/slug (rupture de compatibilité pour
@@ -25,12 +25,12 @@ version: "2.3.0-multi-speakers-test"
 # Bump en 2.2.0 (2026-08-22) : option `default_volume`, correctif du
 # volume/mute du sink PulseAudio resté silencieux (voir CHANGELOG,
 # signalé par la GitHub issue #1).
-# Version "2.3.0-multi-speakers-test" (2026-09-06) : support expérimental
-# multi-enceintes, en test sur la branche `feature/multi-speakers` (voir
-# CHANGELOG). Suffixe "-test" volontaire pour ne jamais être confondue avec
-# une vraie 2.3.0 publiée si ce test finit par être abandonné (voir vault :
-# "on gardera l'app actuelle" si ça ne fonctionne pas) — master reste sur
-# 2.2.0 (commit f67e981) tant que ce n'est pas validé et mergé.
+# Bump en 2.3.0 (2026-09-06) : support multi-enceintes (`extra_speakers`,
+# voir CHANGELOG), réponse directe à la GitHub issue #3. Testé en conditions
+# réelles sur la branche `feature/multi-speakers` (commit `d6ccc0e`) avant
+# merge dans master : deux enceintes connectées/surveillées indépendamment,
+# deux `media_player` HA distincts, lecture audio simultanée confirmée sur
+# les deux (musiques différentes), validé aussi via Music Assistant.
 
 slug: "bluetooth_audio_bridge"
 # Identifiant technique unique de l'add-on (utilisé dans les URLs internes,

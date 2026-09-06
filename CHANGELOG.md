@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.3.0
+- Added multi-speaker support
+  ([GitHub issue #3](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/issues/3)):
+  a new `extra_speakers` option (list of `{mac, name}`, editable straight
+  from the Configuration tab, no YAML needed) lets you register
+  additional Bluetooth speakers alongside the primary one. Each gets its
+  own independent Bluetooth connection/monitoring loop, its own
+  PulseAudio sink, and its own native `media_player` entity, so you can
+  pick which speaker a given stream goes to. This is independently
+  selectable outputs, not synchronized multi-room playback — see
+  [Multiple speakers](README.md#multiple-speakers). MPD stays attached to
+  the primary speaker only. Tested end-to-end on real hardware (two
+  speakers, two independent simultaneous streams, verified through both
+  Home Assistant and Music Assistant).
+
 ## 2.2.0
 - Fixed a real-world failure mode reported via
   [GitHub issue #1](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/issues/1):
