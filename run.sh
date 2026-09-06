@@ -59,13 +59,48 @@ DEFAULT_VOLUME=$(bashio::config 'default_volume')
 
 bashio::log.info "Target speaker: ${SPEAKER_NAME} (${BT_MAC})"
 
+# --- 1bis. Enceintes supplémentaires (multi-enceintes, 2.3.0) ---
+# `extra_speakers` est une liste optionnelle d'objets {mac, name} (voir
+# config.yaml) — vide par défaut, donc ce bloc ne change rien pour qui ne
+# l'utilise pas. On construit un tableau SPEAKERS_MAC[]/SPEAKERS_NAME[] qui
+# commence TOUJOURS par la "première" enceinte historique (bluetooth_mac/
+# speaker_name), pour que l'indice 0 reste celle utilisée par MPD plus bas
+# (étape 3/6) sans rien changer à ce chemin existant.
+SPEAKERS_MAC=("${BT_MAC}")
+SPEAKERS_NAME=("${SPEAKER_NAME}")
+EXTRA_SPEAKERS_COUNT=$(bashio::config 'extra_speakers|length')
+for ((i = 0; i < EXTRA_SPEAKERS_COUNT; i++)); do
+    SPEAKERS_MAC+=("$(bashio::config "extra_speakers[${i}].mac")")
+    SPEAKERS_NAME+=("$(bashio::config "extra_speakers[${i}].name")")
+done
+if ((EXTRA_SPEAKERS_COUNT > 0)); then
+    bashio::log.info "${EXTRA_SPEAKERS_COUNT} extra speaker(s) configured (${#SPEAKERS_MAC[@]} total)."
+fi
+
 # --- 2. Calcul du nom du sink PulseAudio correspondant ---
 # PulseAudio nomme les sinks Bluetooth en remplaçant les ":" par des "_"
 # et en les collant au format bluez_sink.<MAC>.a2dp_sink.
 # Exemple : AA:BB:CC:DD:EE:FF  ->  AA_BB_CC_DD_EE_FF
-BT_MAC_UNDERSCORE=$(echo "${BT_MAC}" | tr ':' '_')
-BLUETOOTH_SINK="bluez_sink.${BT_MAC_UNDERSCORE}.a2dp_sink"
-BLUETOOTH_CARD="bluez_card.${BT_MAC_UNDERSCORE}"
+# Fonction (plutôt qu'un calcul en ligne) car nécessaire pour CHAQUE
+# enceinte du tableau ci-dessus depuis le multi-enceintes, pas seulement
+# la première.
+sink_for_mac() {
+    local mac_underscore
+    mac_underscore=$(echo "$1" | tr ':' '_')
+    echo "bluez_sink.${mac_underscore}.a2dp_sink"
+}
+card_for_mac() {
+    local mac_underscore
+    mac_underscore=$(echo "$1" | tr ':' '_')
+    echo "bluez_card.${mac_underscore}"
+}
+
+BLUETOOTH_SINK=$(sink_for_mac "${BT_MAC}")
+BLUETOOTH_CARD=$(card_for_mac "${BT_MAC}")
+# Ces deux variables restent celles de la PREMIÈRE enceinte uniquement :
+# c'est ce que MPD utilise (étape 3), et MPD ne gère qu'une seule enceinte
+# dans cette version (voir schema de extra_speakers dans config.yaml pour
+# le détail de ce choix).
 
 bashio::log.info "Computed PulseAudio sink: ${BLUETOOTH_SINK}"
 
@@ -87,9 +122,12 @@ fi
 
 # --- 4. Connexion (ou reconnexion) Bluetooth à l'enceinte ---
 # Fonction réutilisée aussi bien au démarrage que dans la boucle de
-# surveillance plus bas.
+# surveillance plus bas. Paramétrée par mac/name (2.3.0, multi-enceintes) :
+# une seule définition, appelée pour chaque enceinte du tableau
+# SPEAKERS_MAC[]/SPEAKERS_NAME[], au lieu d'une copie par enceinte.
 connect_speaker() {
-    bashio::log.info "Connecting to ${SPEAKER_NAME} (${BT_MAC})..."
+    local mac="$1" name="$2"
+    bashio::log.info "Connecting to ${name} (${mac})..."
     # "|| true" sur les trois lignes ci-dessous : avec "set -e" en tête de
     # script, la moindre commande qui renvoie un code non nul (y compris
     # bashio::log.* lui-même, ou "bluetoothctl power on" seul, qui n'était
@@ -101,10 +139,10 @@ connect_speaker() {
     # faire tomber le script, seulement être loggé et retenté par la boucle
     # de surveillance (étape 5).
     bluetoothctl power on || true
-    if bluetoothctl connect "${BT_MAC}"; then
-        bashio::log.info "${SPEAKER_NAME} connected." || true
+    if bluetoothctl connect "${mac}"; then
+        bashio::log.info "${name} connected." || true
     else
-        bashio::log.warning "Failed to connect to ${SPEAKER_NAME} — will retry in the monitoring loop." || true
+        bashio::log.warning "Failed to connect to ${name} — will retry in the monitoring loop." || true
     fi
 }
 
@@ -120,12 +158,17 @@ connect_speaker() {
 # lui-même : on ne peut pas empêcher que ça arrive, seulement le détecter
 # et s'en remettre automatiquement.
 ensure_audio_sink() {
-    if ! pactl list short sinks 2>/dev/null | grep -q "${BLUETOOTH_SINK}"; then
+    local sink="$1" card="$2"
+    # Paramétrée par sink/card (2.3.0, multi-enceintes) : DEFAULT_VOLUME
+    # reste une variable globale partagée entre toutes les enceintes — un
+    # seul réglage de config pour toutes (voir config.yaml), pas de volume
+    # par enceinte dans cette version, pour rester simple.
+    if ! pactl list short sinks 2>/dev/null | grep -q "${sink}"; then
         # Le sink attendu n'existe pas : on force le profil. Sans effet si la
         # carte PulseAudio n'a pas encore été créée par BlueZ (juste après une
         # connexion très récente) — la boucle de surveillance réessaiera au
         # prochain passage.
-        if pactl set-card-profile "${BLUETOOTH_CARD}" a2dp_sink 2>/dev/null; then
+        if pactl set-card-profile "${card}" a2dp_sink 2>/dev/null; then
             bashio::log.warning "Bluetooth audio sink was missing, forced PulseAudio profile back to a2dp_sink."
         fi
         return
@@ -138,8 +181,8 @@ ensure_audio_sink() {
     # (qui ne contrôle que son propre flux, voir étape 5bis) — rien dans ce
     # script ne le touchait jusqu'ici. Deux vérifications séparées :
     # `set-sink-volume` seul ne démute pas un sink déjà muet.
-    if pactl get-sink-mute "${BLUETOOTH_SINK}" 2>/dev/null | grep -q "^Mute: yes"; then
-        if pactl set-sink-mute "${BLUETOOTH_SINK}" 0 2>/dev/null; then
+    if pactl get-sink-mute "${sink}" 2>/dev/null | grep -q "^Mute: yes"; then
+        if pactl set-sink-mute "${sink}" 0 2>/dev/null; then
             bashio::log.warning "Bluetooth audio sink was muted, unmuted it."
         fi
     fi
@@ -148,10 +191,10 @@ ensure_audio_sink() {
     # sortie de `get-sink-volume` : plus fiable qu'un grep sur "0%", qui
     # matcherait aussi "100%" (qui se termine littéralement par "0%").
     local raw_volume
-    raw_volume=$(pactl get-sink-volume "${BLUETOOTH_SINK}" 2>/dev/null \
+    raw_volume=$(pactl get-sink-volume "${sink}" 2>/dev/null \
         | awk -F'/' '/Volume:/ { gsub(/[^0-9]/, "", $1); print $1; exit }') || true
     if [ "${raw_volume:-}" = "0" ]; then
-        if pactl set-sink-volume "${BLUETOOTH_SINK}" "${DEFAULT_VOLUME}%" 2>/dev/null; then
+        if pactl set-sink-volume "${sink}" "${DEFAULT_VOLUME}%" 2>/dev/null; then
             bashio::log.warning "Bluetooth audio sink was silent (0% volume), reset to ${DEFAULT_VOLUME}%."
         fi
     fi
@@ -162,38 +205,60 @@ ensure_audio_sink() {
 
 # On tente une première connexion avant même de démarrer MPD, pour que
 # le sink existe déjà quand MPD essaiera de s'y attacher.
-# "|| true" : filet de sécurité supplémentaire, au cas où connect_speaker
-# retournerait quand même un code non nul pour une raison non couverte
-# ci-dessus — un appel de fonction "nu" comme celui-ci est justement ce
-# qui déclenche "set -e" si son code de sortie est non nul.
-connect_speaker || true
+# Boucle sur SPEAKERS_MAC[]/SPEAKERS_NAME[] (2.3.0, multi-enceintes) : avec
+# une seule enceinte configurée (cas par défaut), ce tableau ne contient que
+# l'indice 0 et cette boucle se comporte exactement comme l'appel unique
+# d'avant.
+for i in "${!SPEAKERS_MAC[@]}"; do
+    # "|| true" : filet de sécurité supplémentaire, au cas où connect_speaker
+    # retournerait quand même un code non nul pour une raison non couverte
+    # ci-dessus — un appel de fonction "nu" comme celui-ci est justement ce
+    # qui déclenche "set -e" si son code de sortie est non nul.
+    connect_speaker "${SPEAKERS_MAC[i]}" "${SPEAKERS_NAME[i]}" || true
+done
 sleep 2
-# Laisse le temps à PulseAudio d'enregistrer la carte Bluetooth après la
-# connexion avant de vérifier/forcer son profil.
-ensure_audio_sink
+# Laisse le temps à PulseAudio d'enregistrer la/les carte(s) Bluetooth après
+# la connexion avant de vérifier/forcer leur profil.
+for i in "${!SPEAKERS_MAC[@]}"; do
+    ensure_audio_sink "$(sink_for_mac "${SPEAKERS_MAC[i]}")" "$(card_for_mac "${SPEAKERS_MAC[i]}")"
+done
 
 # --- 5. Boucle de surveillance Bluetooth (tourne en tâche de fond) ---
 # Vérifie périodiquement (intervalle configurable, voir RECONNECT_INTERVAL)
 # si l'enceinte est toujours connectée ; si elle ne l'est plus (mise en
 # veille, hors de portée...), on relance une connexion automatiquement,
 # sans intervention manuelle.
-(
+# Paramétrée par mac/name/sink/card (2.3.0, multi-enceintes) : UNE instance
+# de cette boucle est lancée en tâche de fond PAR enceinte (voir plus bas),
+# chacune surveillant uniquement la sienne — la déconnexion/reconnexion
+# d'une enceinte n'a donc aucune raison de se mélanger avec celle d'une
+# autre côté logique applicative (la contention possible reste au niveau du
+# radio Bluetooth physique lui-même, voir vault : test du 2026-09-06).
+monitor_speaker() {
+    local mac="$1" name="$2" sink="$3" card="$4"
     while true; do
         sleep "${RECONNECT_INTERVAL}"
-        if ! bluetoothctl info "${BT_MAC}" | grep -q "Connected: yes"; then
-            bashio::log.warning "${SPEAKER_NAME} disconnected, attempting to reconnect..." || true
-            connect_speaker || true
+        if ! bluetoothctl info "${mac}" | grep -q "Connected: yes"; then
+            bashio::log.warning "${name} disconnected, attempting to reconnect..." || true
+            connect_speaker "${mac}" "${name}" || true
             sleep 2
         fi
         # Vérifié à chaque passage, pas seulement après une reconnexion :
         # le profil PulseAudio peut rester bloqué sur "off" alors que
         # Bluetooth se dit déjà connecté depuis un moment (voir 4bis).
-        ensure_audio_sink
+        ensure_audio_sink "${sink}" "${card}"
     done
-) &
-# Le "&" final lance cette boucle en arrière-plan : le script continue
-# immédiatement à l'étape suivante sans attendre que la boucle se termine
-# (elle ne se termine jamais, c'est voulu).
+}
+for i in "${!SPEAKERS_MAC[@]}"; do
+    monitor_speaker \
+        "${SPEAKERS_MAC[i]}" \
+        "${SPEAKERS_NAME[i]}" \
+        "$(sink_for_mac "${SPEAKERS_MAC[i]}")" \
+        "$(card_for_mac "${SPEAKERS_MAC[i]}")" &
+    # Le "&" final lance cette boucle en arrière-plan : le script continue
+    # immédiatement à l'étape suivante sans attendre qu'elle se termine
+    # (elle ne se termine jamais, c'est voulu) — une par enceinte.
+done
 
 # --- 5bis. Lancement du media_player natif (renderer DLNA/UPnP) ---
 # Tourne en tâche de fond, INDÉPENDAMMENT de ENABLE_MPD : c'est la nouvelle
@@ -204,25 +269,39 @@ ensure_audio_sink
 # Nécessite "host_network: true" dans config.yaml (voir commentaire associé)
 # pour que la découverte SSDP fonctionne.
 if command -v gmediarender >/dev/null 2>&1; then
-    # Sans --uuid, gmediarender retombe sur une valeur FIXE codée en dur
-    # ("GMediaRender-1_0-000-000-002"), identique pour toute installation.
-    # Découvert en testant une deuxième instance en parallèle (voir vault,
-    # "Test d'installation réelle") : Home Assistant déduplique les
-    # renderers DLNA par UUID, donc deux enceintes différentes sur deux
-    # installations de cet add-on se retrouveraient fusionnées en une
-    # seule entité media_player. On dérive ici un UUID stable à partir de
-    # bluetooth_mac (même enceinte → même UUID à chaque redémarrage,
-    # enceintes différentes → UUID différents).
-    BT_MAC_HASH=$(echo -n "${BT_MAC}" | md5sum | cut -c1-32)
-    GMEDIARENDER_UUID="${BT_MAC_HASH:0:8}-${BT_MAC_HASH:8:4}-${BT_MAC_HASH:12:4}-${BT_MAC_HASH:16:4}-${BT_MAC_HASH:20:12}"
-    bashio::log.info "gmediarender binary found ($(command -v gmediarender)), starting with uuid=${GMEDIARENDER_UUID}..."
-    gmediarender \
-        --gstout-audiosink=pulsesink \
-        --gstout-audiodevice="${BLUETOOTH_SINK}" \
-        --friendly-name="${SPEAKER_NAME}" \
-        --uuid="${GMEDIARENDER_UUID}" \
-        --logfile=stdout \
-        &
+    # Une instance PAR enceinte configurée (2.3.0, multi-enceintes) : c'est
+    # ce qui donne, côté Home Assistant, un media_player DLNA distinct et
+    # sélectionnable par enceinte — chaque instance a son propre sink
+    # PulseAudio ET son propre UUID (voir ci-dessous), donc HA ne les
+    # confond pas entre elles.
+    for i in "${!SPEAKERS_MAC[@]}"; do
+        mac="${SPEAKERS_MAC[i]}"
+        name="${SPEAKERS_NAME[i]}"
+        sink=$(sink_for_mac "${mac}")
+
+        # Sans --uuid, gmediarender retombe sur une valeur FIXE codée en dur
+        # ("GMediaRender-1_0-000-000-002"), identique pour toute installation.
+        # Découvert en testant une deuxième instance en parallèle (voir vault,
+        # "Test d'installation réelle") : Home Assistant déduplique les
+        # renderers DLNA par UUID, donc deux enceintes différentes sur deux
+        # installations de cet add-on se retrouveraient fusionnées en une
+        # seule entité media_player. On dérive ici un UUID stable à partir de
+        # la MAC de CHAQUE enceinte (même enceinte → même UUID à chaque
+        # redémarrage, enceintes différentes → UUID différents) — c'est ce
+        # même mécanisme, déjà en place avant le multi-enceintes, qui permet
+        # à plusieurs instances de coexister proprement une fois mises en
+        # boucle ici.
+        mac_hash=$(echo -n "${mac}" | md5sum | cut -c1-32)
+        uuid="${mac_hash:0:8}-${mac_hash:8:4}-${mac_hash:12:4}-${mac_hash:16:4}-${mac_hash:20:12}"
+        bashio::log.info "gmediarender binary found ($(command -v gmediarender)), starting for ${name} with uuid=${uuid}..."
+        gmediarender \
+            --gstout-audiosink=pulsesink \
+            --gstout-audiodevice="${sink}" \
+            --friendly-name="${name}" \
+            --uuid="${uuid}" \
+            --logfile=stdout \
+            &
+    done
 else
     bashio::log.error "gmediarender binary NOT FOUND — compilation Dockerfile probablement en échec silencieux, voir le journal de build."
 fi

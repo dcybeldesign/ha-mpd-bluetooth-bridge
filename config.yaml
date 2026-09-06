@@ -14,7 +14,7 @@ name: "Bluetooth Audio Bridge"
 # Ancien nom : "Bluetooth Speaker MPD Bridge" (ancien nom encore avant :
 # "MPD JBL Bridge").
 
-version: "2.2.0"
+version: "2.3.0-multi-speakers-test"
 # Version de l'add-on. À incrémenter à chaque modification si on veut
 # que le Supervisor propose une "mise à jour" plus tard.
 # Bump en 2.0.0 : changement de nom/slug (rupture de compatibilité pour
@@ -25,6 +25,12 @@ version: "2.2.0"
 # Bump en 2.2.0 (2026-08-22) : option `default_volume`, correctif du
 # volume/mute du sink PulseAudio resté silencieux (voir CHANGELOG,
 # signalé par la GitHub issue #1).
+# Version "2.3.0-multi-speakers-test" (2026-09-06) : support expérimental
+# multi-enceintes, en test sur la branche `feature/multi-speakers` (voir
+# CHANGELOG). Suffixe "-test" volontaire pour ne jamais être confondue avec
+# une vraie 2.3.0 publiée si ce test finit par être abandonné (voir vault :
+# "on gardera l'app actuelle" si ça ne fonctionne pas) — master reste sur
+# 2.2.0 (commit f67e981) tant que ce n'est pas validé et mergé.
 
 slug: "bluetooth_audio_bridge"
 # Identifiant technique unique de l'add-on (utilisé dans les URLs internes,
@@ -116,6 +122,7 @@ options:
   reconnect_interval: 30
   enable_mpd: true
   default_volume: 70
+  extra_speakers: []
   # Pas de valeur par défaut pour bluetooth_mac : c'est un champ obligatoire
   # (voir schema ci-dessous, pas de "?" après "match(...)"), l'utilisateur
   # DOIT renseigner l'adresse MAC de sa propre enceinte avant de démarrer.
@@ -124,6 +131,10 @@ options:
   # media_player natif à venir (Phase 2) sera un ajout, pas un remplacement.
   # default_volume à 70 : valeur de repli raisonnable, ni inaudible ni trop
   # fort d'office (voir schema et run.sh pour son usage exact).
+  # extra_speakers vide par défaut (2.3.0, multi-enceintes) : purement
+  # additif, aucune installation existante n'est affectée tant que ce champ
+  # n'est pas rempli — bluetooth_mac/speaker_name restent la "première"
+  # enceinte, exactement comme avant.
 
 schema:
   bluetooth_mac: "match(^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$)"
@@ -155,3 +166,19 @@ schema:
   # N'écrase jamais un volume choisi par l'utilisateur tant qu'il n'est pas
   # à 0% — pas de reset périodique intrusif. Minimum à 1 (pas 0) pour éviter
   # une configuration qui neutraliserait silencieusement ce correctif.
+
+  extra_speakers:
+    - mac: "match(^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$)"
+      name: "str"
+  # Liste optionnelle d'enceintes Bluetooth supplémentaires (2.3.0, réponse
+  # à la GitHub issue #3). Chacune obtient sa propre connexion Bluetooth
+  # surveillée indépendamment (voir run.sh, boucle de surveillance par
+  # enceinte) et son propre renderer DLNA/UPnP gmediarender avec un UUID
+  # dérivé de SA MAC à elle — donc son propre media_player sélectionnable
+  # dans Home Assistant, exactement comme la première enceinte
+  # (bluetooth_mac/speaker_name). MPD/Music Assistant, en revanche, reste
+  # attaché à la première enceinte uniquement dans cette version : MPD ne
+  # sait pas nativement exposer plusieurs sorties comme des media_player HA
+  # distincts, seul le chemin natif (gmediarender) se prête bien au
+  # multi-enceintes tel que demandé (voir vault du projet, section
+  # "Multi-enceintes").
