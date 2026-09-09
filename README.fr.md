@@ -369,6 +369,16 @@ l'extérieur sans ajouter vos propres protections devant.
   Lancez `bluetoothctl list` pour confirmer qu'il est bien actif comme
   contrôleur `[default]`.
 
+## Comment ce projet a été fait
+
+L'idée, les tests sur du matériel réel et les décisions de comportement
+sont de moi. Le code, ainsi que l'essentiel du texte anglais du dépôt
+(l'anglais n'étant pas ma langue), ont été écrits avec Claude, un
+assistant IA, depuis le tout premier commit. Seuls quelques commits
+portent explicitement une ligne `Co-Authored-By` à ce titre ; l'habitude
+de l'ajouter est venue plus tard et n'a pas été appliquée rétroactivement
+au reste de l'historique.
+
 ## Avertissement
 
 Ce projet est un partage libre et gratuit, réalisé sur mon temps

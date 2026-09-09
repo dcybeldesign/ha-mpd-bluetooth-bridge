@@ -340,6 +340,15 @@ protections in front of it.
   `bluetoothctl list` to confirm it's active as the `[default]`
   controller.
 
+## How this was built
+
+The idea, the real-hardware testing, and the decisions on how it should
+behave are mine. The code, and most of the English on this page (not my
+first language), were written with Claude, an AI assistant, from the
+very first commit. Only a couple of commits explicitly carry a
+`Co-Authored-By` line for it; the habit of adding that line came later
+and wasn't applied retroactively to the rest of the history.
+
 ## Disclaimer
 
 This project is shared freely, put together on my own time. I'm not
