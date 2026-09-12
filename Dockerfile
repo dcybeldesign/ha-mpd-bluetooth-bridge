@@ -30,10 +30,18 @@ RUN apk add --no-cache \
         # erreur détectée après un premier essai raté) : utilisé par notre
         # script pour connecter/reconnecter automatiquement l'enceinte si
         # elle se met en veille.
-        gettext
+        gettext \
         # Fournit "envsubst" : petit outil pour remplacer des variables
         # (ex: ${BLUETOOTH_SINK}) dans notre fichier mpd.conf.template
         # au démarrage, sans dépendance lourde comme Python.
+        busybox-extras
+        # Fournit "httpd", le petit serveur web de busybox, qui sert la
+        # page d'appairage Bluetooth (2.4.0, voir webui/ et run.sh, étape
+        # 1ter). Même logique que gettext ci-dessus : ni serveur web
+        # complet ni langage supplémentaire à embarquer. Sur Alpine, httpd
+        # n'est pas dans le paquet "busybox" de base mais dans ce paquet
+        # "-extras" (vérifié dans la config de build Alpine 3.18 : CGI et
+        # filtrage par adresse IP activés, les deux sont nécessaires ici).
 
 # --- Compilation de gmrender-resurrect (renderer DLNA/UPnP) ---
 # C'est ce qui expose l'enceinte comme un media_player natif HA (capacité
@@ -84,9 +92,16 @@ COPY mpd.conf.template /etc/mpd.conf.template
 # l'utilisateur (options.bluetooth_mac), donc il est généré à chaque
 # démarrage par run.sh, pas figé une fois pour toutes à la construction.
 
-RUN chmod a+x /run.sh
-# Rend le script exécutable (obligatoire, sinon le conteneur refusera
-# de le lancer).
+COPY webui/ /opt/btui/
+# Page d'appairage Bluetooth (2.4.0) : httpd.conf, la bibliothèque bash
+# partagée (lib/, volontairement hors de la racine web) et la racine web
+# elle-même (www/, avec la page et les scripts CGI). Voir run.sh, étape
+# 1ter.
+
+RUN chmod a+x /run.sh /opt/btui/www/cgi-bin/*.cgi
+# Rend les scripts exécutables (obligatoire, sinon le conteneur refusera
+# de lancer run.sh, et httpd refusera d'exécuter les scripts CGI de la
+# page d'appairage).
 
 RUN mkdir -p /var/lib/mpd/playlists /var/lib/mpd/music
 # Crée les dossiers de travail attendus par MPD (playlists, bibliothèque

@@ -14,7 +14,7 @@ name: "Bluetooth Audio Bridge"
 # Ancien nom : "Bluetooth Speaker MPD Bridge" (ancien nom encore avant :
 # "MPD JBL Bridge").
 
-version: "2.3.0"
+version: "2.4.0"
 # Version de l'add-on. À incrémenter à chaque modification si on veut
 # que le Supervisor propose une "mise à jour" plus tard.
 # Bump en 2.0.0 : changement de nom/slug (rupture de compatibilité pour
@@ -31,6 +31,9 @@ version: "2.3.0"
 # merge dans master : deux enceintes connectées/surveillées indépendamment,
 # deux `media_player` HA distincts, lecture audio simultanée confirmée sur
 # les deux (musiques différentes), validé aussi via Music Assistant.
+# Bump en 2.4.0 (2026-09-12) : page d'appairage Bluetooth intégrée à Home
+# Assistant (ingress, voir la section "Page d'appairage" plus bas et le
+# CHANGELOG) — plus besoin de terminal pour le premier appairage.
 
 slug: "bluetooth_audio_bridge"
 # Identifiant technique unique de l'add-on (utilisé dans les URLs internes,
@@ -111,6 +114,31 @@ ports:
 ports_description:
   6600/tcp: "MPD protocol port, used by Music Assistant to control playback."
 
+# --- Page d'appairage (ingress, 2.4.0) ---
+# Page web intégrée à Home Assistant pour scanner, appairer et choisir
+# l'enceinte sans terminal (voir webui/ et run.sh, étape 1ter). Avec
+# "ingress", Home Assistant affiche la page dans sa propre interface
+# (panneau latéral + bouton "Ouvrir l'interface web") et gère lui-même
+# l'authentification : la page n'est jamais exposée directement.
+ingress: true
+ingress_port: 0
+# 0 = port choisi par le Supervisor, lu au démarrage par run.sh
+# (bashio::addon.ingress_port). Recommandé en host_network : un port fixe
+# risquerait d'entrer en conflit avec un service de l'hôte ou d'un autre
+# add-on, puisque le conteneur partage la pile réseau de l'hôte (même
+# combinaison que l'add-on communautaire AdGuard Home).
+panel_icon: "mdi:bluetooth-audio"
+panel_title: "Bluetooth Audio"
+# panel_admin n'est pas précisé : sa valeur par défaut (true) réserve déjà
+# le panneau aux administrateurs, ce qui est voulu (l'appairage touche au
+# Bluetooth de l'hôte).
+# Pas de "hassio_api" : les seuls appels au Supervisor faits par la page
+# (modifier ses propres options, se redémarrer) sont autorisés à tout
+# add-on sur lui-même, sans droit supplémentaire — voir webui/lib/btui.sh.
+# Pas non plus de "ingress_stream" : sans lui, le Supervisor transmet le
+# corps des requêtes POST avec un Content-Length, seul format que httpd de
+# busybox sait lire.
+
 # --- Options configurables depuis l'interface Home Assistant ---
 # C'est ici que l'utilisateur final renseigne les informations propres à
 # SON installation (son enceinte à lui) — rien de spécifique à une
@@ -123,9 +151,11 @@ options:
   enable_mpd: true
   default_volume: 70
   extra_speakers: []
-  # Pas de valeur par défaut pour bluetooth_mac : c'est un champ obligatoire
-  # (voir schema ci-dessous, pas de "?" après "match(...)"), l'utilisateur
-  # DOIT renseigner l'adresse MAC de sa propre enceinte avant de démarrer.
+  # bluetooth_mac vide par défaut : depuis 2.4.0, c'est le point de départ
+  # normal d'une première installation (mode configuration, voir schema
+  # ci-dessous). L'enceinte est ensuite choisie depuis la page
+  # d'appairage, qui remplit ce champ elle-même. Avant 2.4.0, ce champ
+  # était obligatoire et devait être rempli à la main avant de démarrer.
   # enable_mpd par défaut à true : préserve le comportement actuel (musique
   # via MPD/Music Assistant) pour quiconque utilise déjà ce chemin — le
   # media_player natif à venir (Phase 2) sera un ajout, pas un remplacement.
@@ -137,10 +167,16 @@ options:
   # enceinte, exactement comme avant.
 
 schema:
-  bluetooth_mac: "match(^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$)"
+  bluetooth_mac: "match(^(([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})?$)?"
   # Valide le format d'une adresse MAC Bluetooth (ex: AA:BB:CC:DD:EE:FF) et
   # affiche une erreur claire dans l'UI si l'utilisateur se trompe de format,
   # plutôt qu'un échec silencieux au démarrage du conteneur.
+  # Depuis 2.4.0, le champ peut rester vide : c'est le mode configuration
+  # d'une première installation, où seule la page d'appairage tourne (voir
+  # run.sh, étape 1quater) jusqu'à ce qu'une enceinte y soit choisie. D'où
+  # le "(...)?" qui rend toute l'adresse facultative dans l'expression, et
+  # le "?" final qui marque l'option comme facultative pour l'interface de
+  # Home Assistant (sinon le formulaire la signalerait comme obligatoire).
 
   speaker_name: "str"
   # Nom cosmétique affiché côté MPD pour cette sortie audio (n'affecte pas

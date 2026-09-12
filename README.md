@@ -36,6 +36,11 @@ original MPD bridge available as an optional second output.
   speaker's MAC address, connects the speaker via `bluetoothctl`, then
   starts MPD. Music Assistant's "MPD Players" provider connects to it
   over the standard MPD protocol port (`6600/tcp`).
+- **Pairing page** (Home Assistant ingress, **Bluetooth Audio** panel in
+  the sidebar): a small web page served by busybox `httpd`, with shell
+  scripts calling `bluetoothctl`. It scans for Bluetooth Classic audio
+  devices, pairs and trusts them, and writes the speaker you pick into
+  the add-on's own configuration through the Supervisor API.
 - A background loop checks the Bluetooth connection every
   `reconnect_interval` seconds (default 30s) and reconnects automatically
   if the speaker drops (sleep mode, out of range, etc.).
@@ -67,21 +72,57 @@ DLNA/UPnP discovery working without `host_network`.
   and tested on a **Raspberry Pi 4** (built-in Bluetooth 5.0). See
   [Portability](#portability-beyond-raspberry-pi-4) below for other
   hardware.
-- Shell/terminal access to that host (see step 1 of
-  [Pairing your speaker](#pairing-your-speaker-first-time-setup) below if
-  you don't have this yet).
-- The target speaker must already be **paired** with the host beforehand.
-  This add-on only handles connecting/reconnecting an already-paired
-  device, not the first-time pairing. Full walkthrough below.
+- A Bluetooth speaker you can put into pairing mode. No terminal needed:
+  the add-on's own **Bluetooth Audio** panel finds and pairs it, see
+  [Pairing your speaker](#pairing-your-speaker-first-time-setup) below.
+  Only speakers that ask for a PIN code still need the
+  [manual procedure](#manual-pairing-fallback), which requires terminal
+  access to the host.
 - [Music Assistant](https://www.music-assistant.io/) is only needed if
   you plan to use the optional MPD output (`enable_mpd`). The native
   `media_player` works without it.
 
 ## Pairing your speaker (first-time setup)
 
-Do this once per speaker, **before** installing the add-on. The add-on can
-only reconnect a speaker Home Assistant already knows about; it can't do
-the first-time pairing for you.
+Do this once per speaker, straight from the add-on's own pairing page.
+
+**1. Install and start the add-on** (see [Installation](#installation)
+below). On a first install, leave `bluetooth_mac` empty: the add-on then
+starts in *setup mode*, with only its pairing page running.
+
+**2. Open the pairing page.** Click **Bluetooth Audio** in the Home
+Assistant sidebar, or **Open Web UI** on the add-on's Info tab. It's only
+available to Home Assistant administrators.
+
+**3. Put your speaker into pairing mode.**
+This varies by speaker model, usually holding the power or Bluetooth
+button for a few seconds until a light starts blinking. Check your
+speaker's own manual if you're not sure how. If the speaker is currently
+connected to a phone, disconnect it there first: many speakers only
+accept one connection at a time.
+
+**4. Click Scan.** After about 30 seconds, nearby Bluetooth audio devices
+show up by name. Phones, TVs, and other non-audio devices are hidden
+unless you tick *Show non-audio devices*.
+
+**5. Click Pair next to your speaker.** The add-on pairs, trusts, and
+connects it. You should hear a connection tone from the speaker, and its
+*Paired*, *Trusted* and *Connected* badges turn green. *Trusted* is what
+allows the add-on's automatic reconnection to work later.
+
+**6. Click Set as primary**, then confirm the name you want to see in
+Home Assistant. The add-on saves the speaker into its own configuration
+(`bluetooth_mac` and `speaker_name`) and restarts by itself; the native
+`media_player` then shows up as described in
+[Native media_player output](#native-media_player-output-dlnaupnp). For
+another speaker, pair it the same way and click **Add as extra** instead,
+see [Multiple speakers](#multiple-speakers).
+
+### Manual pairing (fallback)
+
+If the pairing page can't pair your speaker (typically an older model
+that asks for a PIN code), pair it once by hand from a terminal, then
+enter its MAC address in the add-on's `bluetooth_mac` option.
 
 **1. Get a terminal on your Home Assistant host.**
 If typing commands into Home Assistant is new to you, go to **Settings →
@@ -91,10 +132,7 @@ add-on, install it, start it, then open it from the sidebar. That gives
 you a command-line prompt inside Home Assistant, no separate SSH client
 needed.
 
-**2. Put your speaker into pairing mode.**
-This varies by speaker model, usually holding the power or Bluetooth
-button for a few seconds until a light starts blinking. Check your
-speaker's own manual if you're not sure how.
+**2. Put your speaker into pairing mode**, as in step 3 above.
 
 **3. In the terminal, start scanning:**
 ```
@@ -130,8 +168,9 @@ quit
 - `connect` confirms the link works right now. You should hear a
   connection tone from the speaker.
 
-**5. Keep that MAC address handy.** You'll paste it into the add-on's
-`bluetooth_mac` option in the next step.
+**5. Enter that MAC address** in the add-on's `bluetooth_mac` option
+(Configuration tab), then start or restart the add-on. The pairing page
+will then show it with its *Paired*, *Trusted* and *Connected* badges.
 
 ## Installation
 
@@ -149,9 +188,12 @@ with this repository's URL pre-filled, just confirm to add it.
    add-on appears. It'll show up under a section named after this
    repository (or under "Local apps" if you copied the folder
    manually).
-3. Click the add-on, install it, open its **Configuration** tab and fill
-   in your speaker's Bluetooth MAC address from the pairing steps above
-   (required, see [Configuration](#configuration)), then start it.
+3. Click the add-on, install it, then start it. On a first install,
+   leave `bluetooth_mac` empty and follow
+   [Pairing your speaker](#pairing-your-speaker-first-time-setup) from
+   the add-on's **Bluetooth Audio** panel. If you already paired the
+   speaker by hand, fill in its MAC address in the **Configuration** tab
+   first (see [Configuration](#configuration)).
 4. The native `media_player` entity should appear automatically in Home
    Assistant within a couple of minutes, see
    [Native media_player output](#native-media_player-output-dlnaupnp)
@@ -180,7 +222,7 @@ with this repository's URL pre-filled, just confirm to add it.
 
 | Option | Description | Default |
 |---|---|---|
-| `bluetooth_mac` | MAC address of the Bluetooth speaker (format `AA:BB:CC:DD:EE:FF`). **Required.** | *(none, must be set)* |
+| `bluetooth_mac` | MAC address of the primary Bluetooth speaker (format `AA:BB:CC:DD:EE:FF`). Filled in automatically when you pick a speaker on the pairing page; leave empty on a first install to start in setup mode (pairing page only). | *(empty)* |
 | `speaker_name` | Cosmetic label for the outputs (MPD and the `media_player` friendly name). | `Bluetooth Speaker` |
 | `reconnect_interval` | Seconds between Bluetooth connection checks (10-300). | `30` |
 | `enable_mpd` | Whether to start the MPD server. The Bluetooth connection and the native `media_player` are unaffected either way; turn this off if you only want the native `media_player` output and don't use Music Assistant. | `true` |
@@ -203,8 +245,9 @@ using the `tts.speak` or `media_player.play_media` service with
 ## Multiple speakers
 
 You're not limited to one Bluetooth speaker. The `extra_speakers` option
-(a list of `{mac, name}` entries, added straight from the add-on's
-Configuration tab — no YAML editing needed) lets you register additional
+(a list of `{mac, name}` entries, added from the pairing page with **Add
+as extra**, or straight from the add-on's Configuration tab — no YAML
+editing needed) lets you register additional
 speakers alongside the primary one (`bluetooth_mac`/`speaker_name`). Each
 speaker gets:
 
@@ -288,22 +331,28 @@ matching the assumption that your Home Assistant network is already
 trusted. Don't expose this port externally without adding your own
 protections in front of it.
 
+The pairing page is only reachable through Home Assistant's ingress, so
+behind your Home Assistant login, and only for administrators. Because
+the add-on uses `host_network`, its web server deliberately listens only
+on the internal Supervisor network address and rejects any client other
+than the Supervisor's ingress proxy: it isn't reachable from your LAN.
+
 ## Troubleshooting
 
 - **Add-on won't start / crashes immediately**: check the add-on's Log
-  tab. A wrong or missing `bluetooth_mac` will fail config validation
-  before the container even starts. Double-check you copied the full
-  address with colons (`AA:BB:CC:DD:EE:FF`), not dashes or no
-  separators.
+  tab. A malformed `bluetooth_mac` will fail config validation before
+  the container even starts. Double-check you copied the full address
+  with colons (`AA:BB:CC:DD:EE:FF`), not dashes or no separators. An
+  empty `bluetooth_mac` is fine: the add-on then starts in setup mode,
+  see [Pairing your speaker](#pairing-your-speaker-first-time-setup).
 - **"Failed to open audio output" / no sound on the MPD side, but the
   add-on is running**: this almost always means the speaker isn't
   actually *paired and trusted* yet. "In range" or "powered on" isn't
-  enough. Go back through
-  [Pairing your speaker](#pairing-your-speaker-first-time-setup) and make
-  sure the `pair` and `trust` commands both succeeded (not just
-  `connect`). You can check current status any time with
-  `bluetoothctl info AA:BB:CC:DD:EE:FF` in a terminal: look for
-  `Paired: yes`, `Trusted: yes`, and `Connected: yes` in its output.
+  enough. Open the add-on's **Bluetooth Audio** panel: the speaker's
+  *Paired*, *Trusted* and *Connected* badges should all be green. If one
+  isn't, click **Pair** next to it (on an already-paired speaker it only
+  re-trusts it, without redoing the pairing), or go back through
+  [Pairing your speaker](#pairing-your-speaker-first-time-setup).
 - **The `media_player` entity never shows up**: confirm `host_network:
   true` wasn't disabled by mistake in the add-on's Network tab, then try
   the manual scan described in
@@ -318,10 +367,25 @@ protections in front of it.
   of rapid Bluetooth disconnects/reconnects. If this keeps happening,
   restarting the add-on works around it in the meantime.
 - **My speaker keeps disconnecting / doesn't reconnect automatically**:
-  confirm `trust` was run during pairing (step 4). Without it, HAOS
-  won't allow the automatic reconnection this add-on relies on. You can
-  re-run `trust AA:BB:CC:DD:EE:FF` in `bluetoothctl` at any time without
-  redoing the full pairing.
+  check that its *Trusted* badge is green on the pairing page. Without
+  it, HAOS won't allow the automatic reconnection this add-on relies on.
+  Clicking **Pair** on an already-paired speaker only re-trusts it, it
+  doesn't redo the full pairing (or run `trust AA:BB:CC:DD:EE:FF` in
+  `bluetoothctl`).
+- **Pairing fails on the pairing page**: make sure the speaker is in
+  pairing mode *when you click Pair* (many speakers leave pairing mode
+  after a minute or two), close to the host, and not connected to a
+  phone. Speakers that ask for a PIN code can't be paired from the page:
+  use [Manual pairing (fallback)](#manual-pairing-fallback). The error
+  shown on the page, and the add-on's Log tab, include the reason
+  reported by Bluetooth.
+- **The Bluetooth Audio panel doesn't open, or shows an error**: look for
+  a `Starting the pairing web UI` line in the add-on's Log tab. If
+  there's an error about the ingress address/port instead, restart the
+  add-on; the audio bridge itself keeps working either way.
+- **Another Bluetooth audio add-on is installed** (for example Bluetooth
+  Audio Manager): don't let two add-ons manage the same speaker. Each one
+  reconnects it on its own and they end up fighting over the connection.
 - **Music Assistant shows the MPD player as unavailable**: double-check
   `enable_mpd` is on and you used the add-on's *internal hostname*, not
   the host's IP address (see step 5 in Installation).
