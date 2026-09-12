@@ -305,6 +305,14 @@ add-on contrôle — Home Assistant affiche déjà le bon nom de son côté
 directement là-bas : **Music Assistant → Paramètres → Lecteurs →
 sélectionnez le lecteur → l'icône crayon** à côté de son nom.
 
+**Changer d'enceinte principale déplace son entité.** La sortie
+`media_player` native de l'enceinte principale écoute toujours sur le
+port 49494, et Home Assistant rattache l'entité à cette adresse. Si vous
+définissez une autre enceinte comme principale, l'entité existante passe
+sur cette enceinte et peut prendre son nom. Les enceintes supplémentaires
+écoutent chacune sur un port fixe dérivé de leur adresse MAC, donc leurs
+entités restent attachées à elles quel que soit l'ordre de la liste.
+
 Si vous ajoutez une enceinte pendant que l'add-on tourne déjà et que son
 entité `media_player` n'apparaît pas au bout de quelques minutes, essayez
 un **redémarrage complet de Home Assistant Core** (Paramètres > Système >

@@ -19,6 +19,19 @@
   unauthenticated, from the whole LAN. No additional Supervisor API
   permission is requested (`hassio_api` stays off).
 - Added the missing `extra_speakers` description to the Configuration tab.
+- Fixed the monitoring loop reporting a connected speaker as disconnected
+  every ~30 seconds, then retrying a connection that could only fail. The
+  `bluetoothctl` and `pactl` outputs are now captured before being
+  searched: piping them into `grep -q` under `pipefail` could make a
+  line that was there read as missing.
+- Each speaker's native `media_player` now listens on a fixed port: the
+  primary speaker always on 49494, as before in practice, and each extra
+  speaker on a port derived from its MAC address. Until now, the port
+  went to whichever speaker started first, so after a restart with
+  several speakers a Home Assistant entity could end up on the wrong
+  speaker. Changing the primary speaker still moves the primary entity to
+  the new primary speaker, see
+  [Multiple speakers](README.md#multiple-speakers).
 
 ## 2.3.0
 - Added multi-speaker support

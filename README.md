@@ -276,6 +276,13 @@ set in `extra_speakers`). If Music Assistant confuses two players, rename
 them directly there: **Music Assistant → Settings → Players → pick the
 player → the pencil icon** next to its name.
 
+**Changing the primary speaker moves its entity.** The primary speaker's
+native `media_player` always listens on port 49494, and Home Assistant
+ties the entity to that address. If you set another speaker as primary,
+the existing entity switches to that speaker and can take its name.
+Extra speakers each listen on a fixed port derived from their MAC
+address, so their entities stay with them however the list is ordered.
+
 If you add a speaker while the add-on is already running and its
 `media_player` entity doesn't show up after a few minutes, try a full
 **Home Assistant Core restart** (Settings → System → Restart, not just

@@ -215,7 +215,15 @@ ensure_audio_sink() {
     # reste une variable globale partagée entre toutes les enceintes — un
     # seul réglage de config pour toutes (voir config.yaml), pas de volume
     # par enceinte dans cette version, pour rester simple.
-    if ! pactl list short sinks 2>/dev/null | grep -q "${sink}"; then
+    # Sortie capturée PUIS cherchée, jamais "commande | grep -q" (2.4.0) :
+    # avec "set -o pipefail" en tête de script, grep -q s'arrête dès la
+    # première correspondance, la commande en amont peut alors être tuée par
+    # SIGPIPE en écrivant la suite de sa sortie, et tout le pipe est lu comme
+    # un échec alors que la ligne cherchée était bien là. Même règle dans
+    # monitor_speaker plus bas, et même précaution que webui/lib/btui.sh.
+    local sinks
+    sinks=$(pactl list short sinks 2>/dev/null) || true
+    if ! grep -q "${sink}" <<<"${sinks}"; then
         # Le sink attendu n'existe pas : on force le profil. Sans effet si la
         # carte PulseAudio n'a pas encore été créée par BlueZ (juste après une
         # connexion très récente) — la boucle de surveillance réessaiera au
@@ -233,7 +241,9 @@ ensure_audio_sink() {
     # (qui ne contrôle que son propre flux, voir étape 5bis) — rien dans ce
     # script ne le touchait jusqu'ici. Deux vérifications séparées :
     # `set-sink-volume` seul ne démute pas un sink déjà muet.
-    if pactl get-sink-mute "${sink}" 2>/dev/null | grep -q "^Mute: yes"; then
+    local mute
+    mute=$(pactl get-sink-mute "${sink}" 2>/dev/null) || true
+    if grep -q "^Mute: yes" <<<"${mute}"; then
         if pactl set-sink-mute "${sink}" 0 2>/dev/null; then
             bashio::log.warning "Bluetooth audio sink was muted, unmuted it."
         fi
@@ -287,10 +297,16 @@ done
 # autre côté logique applicative (la contention possible reste au niveau du
 # radio Bluetooth physique lui-même, voir vault : test du 2026-09-06).
 monitor_speaker() {
-    local mac="$1" name="$2" sink="$3" card="$4"
+    local mac="$1" name="$2" sink="$3" card="$4" info
     while true; do
         sleep "${RECONNECT_INTERVAL}"
-        if ! bluetoothctl info "${mac}" | grep -q "Connected: yes"; then
+        # Sortie capturée puis cherchée (2.4.0, voir ensure_audio_sink) : le
+        # pipe "bluetoothctl info | grep -q" sous pipefail signalait une
+        # enceinte pourtant connectée comme déconnectée toutes les ~30 s,
+        # puis relançait une connexion qui échouait forcément (constaté sur
+        # un Raspberry Pi 4 le 2026-09-12, BlueZ 5.66 de l'image Alpine 3.18).
+        info=$(bluetoothctl info "${mac}" 2>/dev/null) || true
+        if ! grep -q "Connected: yes" <<<"${info}"; then
             bashio::log.warning "${name} disconnected, attempting to reconnect..." || true
             connect_speaker "${mac}" "${name}" || true
             sleep 2
@@ -326,6 +342,7 @@ if command -v gmediarender >/dev/null 2>&1; then
     # sélectionnable par enceinte — chaque instance a son propre sink
     # PulseAudio ET son propre UUID (voir ci-dessous), donc HA ne les
     # confond pas entre elles.
+    used_ports=()
     for i in "${!SPEAKERS_MAC[@]}"; do
         mac="${SPEAKERS_MAC[i]}"
         name="${SPEAKERS_NAME[i]}"
@@ -345,12 +362,42 @@ if command -v gmediarender >/dev/null 2>&1; then
         # boucle ici.
         mac_hash=$(echo -n "${mac}" | md5sum | cut -c1-32)
         uuid="${mac_hash:0:8}-${mac_hash:8:4}-${mac_hash:12:4}-${mac_hash:16:4}-${mac_hash:20:12}"
-        bashio::log.info "gmediarender binary found ($(command -v gmediarender)), starting for ${name} with uuid=${uuid}..."
+
+        # Port d'écoute FIXE par enceinte (2.4.0). Sans --port, chaque
+        # instance tente 49494 et la première prête le prend : l'ordre de
+        # démarrage décidait donc quelle enceinte répondait sur 49494. Or
+        # l'intégration DLNA de Home Assistant rattache une entité à l'adresse
+        # du renderer : après un simple redémarrage avec plusieurs enceintes,
+        # une entité pouvait se retrouver sur la mauvaise enceinte (constaté
+        # le 2026-09-12). Choix retenu :
+        # - l'enceinte PRINCIPALE garde toujours 49494, le port qu'elle avait
+        #   déjà en pratique : les entités des installations existantes, y
+        #   compris celles créées avant le correctif UUID, continuent de
+        #   fonctionner sans rien reconfigurer ;
+        # - chaque enceinte SUPPLÉMENTAIRE reçoit un port dérivé de sa MAC
+        #   (49500 à 59499, plage autorisée par gmediarender : 49152 à 65535),
+        #   donc stable quel que soit l'ordre de la liste. En cas de collision
+        #   entre deux enceintes, on décale d'un port.
+        # Limite assumée et documentée dans le README : changer d'enceinte
+        # principale fait passer l'entité rattachée à 49494 sur la nouvelle
+        # enceinte principale.
+        if ((i == 0)); then
+            port=49494
+        else
+            port=$((49500 + 16#${mac_hash:0:4} % 10000))
+            while [[ " ${used_ports[*]} " == *" ${port} "* ]]; do
+                port=$((port + 1))
+            done
+        fi
+        used_ports+=("${port}")
+
+        bashio::log.info "gmediarender binary found ($(command -v gmediarender)), starting for ${name} with uuid=${uuid} on port ${port}..."
         gmediarender \
             --gstout-audiosink=pulsesink \
             --gstout-audiodevice="${sink}" \
             --friendly-name="${name}" \
             --uuid="${uuid}" \
+            --port="${port}" \
             --logfile=stdout \
             &
     done
