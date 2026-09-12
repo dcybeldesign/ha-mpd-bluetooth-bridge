@@ -2,15 +2,16 @@ configuration:
   bluetooth_mac:
     name: Bluetooth MAC address
     description: >-
-      MAC address of the Bluetooth speaker to connect to (format
-      AA:BB:CC:DD:EE:FF). The speaker must already be paired with the
-      host beforehand — this add-on only handles connecting/reconnecting,
-      not the initial pairing. Required.
+      MAC address of the primary Bluetooth speaker (format
+      AA:BB:CC:DD:EE:FF). Filled in automatically when you pick a speaker
+      in the add-on's "Bluetooth Audio" panel. Leave empty on a first
+      install: the add-on then starts in setup mode, with only its pairing
+      page running.
   speaker_name:
     name: Speaker name
     description: >-
-      Cosmetic label shown for this output inside MPD. Does not affect
-      functionality.
+      Name of the primary speaker, shown for its native media_player and
+      its MPD output. Does not affect functionality.
   reconnect_interval:
     name: Reconnect check interval (seconds)
     description: >-
@@ -30,3 +31,10 @@ configuration:
       ever found muted or at 0% (which otherwise stays silent
       indefinitely, even across reboots, with no visible error). Never
       overrides a volume you've deliberately set as long as it isn't 0%.
+  extra_speakers:
+    name: Extra speakers
+    description: >-
+      Optional additional Bluetooth speakers (MAC address and name each),
+      each with its own native media_player. Can also be added from the
+      "Bluetooth Audio" panel after pairing. MPD stays on the primary
+      speaker only.

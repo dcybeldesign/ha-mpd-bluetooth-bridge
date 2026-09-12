@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bluetooth Audio Bridge — Pairing</title>
+<!--
+  ============================================================
+  index.html — Page d'appairage Bluetooth (ingress Home Assistant)
+  ============================================================
+  Page unique ouverte depuis le panneau "Bluetooth Audio" de Home
+  Assistant. Volontairement sans framework, sans étape de build et sans
+  aucune ressource externe (CDN, polices...) : tout est dans ce fichier,
+  la page fonctionne donc même sans accès Internet.
+
+  Deux règles imposées par l'ingress du Supervisor :
+  - URLs RELATIVES uniquement ("cgi-bin/status.cgi", jamais
+    "/cgi-bin/...") : la page est servie sous un préfixe dynamique du type
+    /api/hassio_ingress/<jeton>/, qu'une URL absolue ignorerait ;
+  - l'authentification est déjà faite par Home Assistant avant d'arriver
+    ici, rien à gérer de ce côté.
+
+  Sécurité : les noms d'appareils Bluetooth sont choisis par n'importe qui
+  à portée radio. Ils ne sont donc JAMAIS insérés comme HTML (pas
+  d'innerHTML) mais toujours comme texte (fonction el() plus bas), sinon
+  un appareil au nom piégé pourrait exécuter du code dans la session
+  administrateur de Home Assistant.
+
+  Textes en anglais, comme les journaux de l'add-on et sa fiche dans le
+  magasin d'applications (audience internationale).
+-->
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1c1f24; --muted: #5f6873; --border: #dfe3e8;
+    --accent: #03a9f4; --accent-text: #ffffff;
+    --ok: #256c2a; --ok-bg: #e5f3e6; --off: #5f6873; --off-bg: #eceff1;
+    --info: #0b5394; --info-bg: #e3f0fb; --err: #b3261e; --err-bg: #fdecea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111418; --card: #1b1f25; --text: #e6e8eb; --muted: #9aa4ae; --border: #2c323a;
+      --ok: #8fd694; --ok-bg: #1d3320; --off: #9aa4ae; --off-bg: #262b31;
+      --info: #9fcdf5; --info-bg: #14283b; --err: #f2b8b5; --err-bg: #3a1d1b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px; background: var(--bg); color: var(--text);
+    font: 15px/1.5 Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; display: grid; gap: 16px; }
+  h1 { font-size: 22px; font-weight: 500; margin: 0; }
+  h2 { font-size: 17px; font-weight: 500; margin: 0 0 4px; }
+  p { margin: 0; }
+  .muted { color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .banner { display: flex; gap: 10px; align-items: flex-start; border-radius: 10px; padding: 12px 14px; }
+  .banner p { flex: 1; overflow-wrap: anywhere; }
+  .banner.info { background: var(--info-bg); color: var(--info); }
+  .banner.success { background: var(--ok-bg); color: var(--ok); }
+  .banner.error { background: var(--err-bg); color: var(--err); }
+  .banner button { border: 0; padding: 0 4px; color: inherit; font-size: 20px; line-height: 1; }
+  .spinner {
+    flex: none; width: 16px; height: 16px; margin-top: 3px; border-radius: 50%;
+    border: 2px solid currentColor; border-right-color: transparent; animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .list { list-style: none; margin: 8px 0 0; padding: 0; }
+  .item {
+    display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between;
+    padding: 12px 0; border-top: 1px solid var(--border);
+  }
+  .item:first-child { border-top: 0; }
+  .who { min-width: 0; }
+  .name { font-weight: 500; overflow-wrap: anywhere; }
+  .mac { font: 13px ui-monospace, Menlo, Consolas, monospace; color: var(--muted); }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--off-bg); color: var(--off); }
+  .badge.on { background: var(--ok-bg); color: var(--ok); }
+  .badge.role { background: var(--info-bg); color: var(--info); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 12px; }
+  button {
+    font: inherit; font-size: 14px; padding: 6px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: transparent; color: var(--text);
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button.danger { color: var(--err); }
+  button:disabled { opacity: .5; cursor: default; }
+  label.check { display: flex; gap: 6px; align-items: center; font-size: 14px; color: var(--muted); }
+  dialog {
+    width: min(420px, calc(100vw - 32px)); padding: 20px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, .45); }
+  dialog label { display: block; margin-top: 12px; font-size: 14px; color: var(--muted); }
+  dialog input {
+    display: block; width: 100%; margin-top: 4px; padding: 8px 10px; font: inherit; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  }
+  dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Bluetooth Audio Bridge</h1>
+    <p class="muted">Find, pair and choose the Bluetooth speakers this add-on plays to.</p>
+  </header>
+
+  <div id="banner" hidden></div>
+
+  <section class="card">
+    <h2>Configured speakers</h2>
+    <div id="speakers"><p class="muted">Loading…</p></div>
+  </section>
+
+  <section class="card">
+    <h2>Find a speaker</h2>
+    <p class="muted">
+      Put your speaker in pairing mode first (usually by holding its power or Bluetooth button until a
+      light blinks), then scan. Speakers that ask for a PIN code must be paired manually, see the
+      add-on documentation.
+    </p>
+    <div class="toolbar">
+      <button id="scan" class="primary" type="button" disabled>Scan (30 s)</button>
+      <label class="check"><input id="show-all" type="checkbox"> Show non-audio devices</label>
+    </div>
+    <div id="devices"></div>
+  </section>
+</main>
+
+<dialog id="dialog">
+  <form method="dialog">
+    <h2 id="dialog-title"></h2>
+    <p id="dialog-text" class="muted"></p>
+    <label id="dialog-label" hidden>
+      Name shown in Home Assistant
+      <input id="dialog-input" maxlength="64" pattern='[^"\\]+' title="Quotes and backslashes are not allowed">
+    </label>
+    <div class="buttons">
+      <button type="submit" value="cancel" formnovalidate>Cancel</button>
+      <button type="submit" value="ok" id="dialog-ok" class="primary">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+'use strict';
+
+const STATUS_URL = 'cgi-bin/status.cgi';
+const ACTION_URL = 'cgi-bin/action.cgi';
+const RESTART_MIN_MS = 8000;      // en dessous, la réponse vient encore de l'ancien conteneur
+const RESTART_MAX_MS = 180000;    // au-delà, on arrête d'attendre et on le signale
+const RECENT_JOB_SECONDS = 600;   // résultat d'opération affiché pendant 10 min au plus
+
+let state = null;           // dernière réponse de status.cgi
+let pending = false;        // requête action.cgi en cours
+let restartingSince = 0;    // horodatage du redémarrage demandé, 0 sinon
+let actionError = '';
+let dismissedJobId = null;
+let timer = null;
+
+// Construit un élément DOM. Les enfants de type chaîne sont insérés comme
+// TEXTE (jamais interprétés comme du HTML) : voir la note de sécurité en tête.
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key === 'class') node.className = value;
+    else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+    else if (value === true) node.setAttribute(key, '');
+    else if (value !== false && value != null) node.setAttribute(key, value);
+  }
+  for (const child of children) {
+    if (child != null && child !== false) node.append(child);
+  }
+  return node;
+}
+
+function button(label, className, disabled, onclick) {
+  return el('button', { type: 'button', class: className, disabled, onclick }, label);
+}
+
+function badges(device) {
+  const badge = (on, yes, no) => el('span', { class: on ? 'badge on' : 'badge' }, on ? yes : no);
+  return el('div', { class: 'badges' },
+    badge(device.paired, 'Paired', 'Not paired'),
+    badge(device.trusted, 'Trusted', 'Not trusted'),
+    badge(device.connected, 'Connected', 'Disconnected'));
+}
+
+async function request(url, options = {}) {
+  const response = await fetch(url, { cache: 'no-store', ...options });
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (_) {
+    // Réponse non JSON (ex: page d'erreur du proxy pendant un redémarrage).
+  }
+  if (!response.ok || !data || data.ok === false) {
+    throw new Error((data && data.error) || `HTTP ${response.status}`);
+  }
+  return data;
+}
+
+async function refresh() {
+  clearTimeout(timer);
+  try {
+    state = await request(STATUS_URL);
+    if (actionError.startsWith('Cannot reach')) actionError = '';
+    if (restartingSince && Date.now() - restartingSince > RESTART_MIN_MS) restartingSince = 0;
+  } catch (error) {
+    // Pendant un redémarrage, l'add-on est injoignable quelques secondes : normal.
+    if (!restartingSince) actionError = `Cannot reach the add-on: ${error.message}`;
+  }
+  if (restartingSince && Date.now() - restartingSince > RESTART_MAX_MS) {
+    restartingSince = 0;
+    actionError = 'The add-on did not come back after restarting. Check its Log tab.';
+  }
+  render();
+  const fast = restartingSince || pending || (state && state.busy);
+  timer = setTimeout(refresh, fast ? 2000 : document.hidden ? 30000 : 10000);
+}
+
+async function act(payload) {
+  pending = true;
+  actionError = '';
+  render();
+  try {
+    const data = await request(ACTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (data.restarting) restartingSince = Date.now();
+    dismissedJobId = null;
+  } catch (error) {
+    actionError = error.message;
+  } finally {
+    pending = false;
+  }
+  refresh();
+}
+
+// Boîte de dialogue maison plutôt que prompt()/confirm() : ces derniers ne
+// sont pas toujours affichés dans les applications mobiles Home Assistant.
+// Résout avec null si annulé, sinon avec le nom saisi ('' sans champ).
+function ask({ title, text, input = null, ok = 'OK', danger = false }) {
+  const dialog = document.getElementById('dialog');
+  const label = document.getElementById('dialog-label');
+  const field = document.getElementById('dialog-input');
+  const okButton = document.getElementById('dialog-ok');
+  document.getElementById('dialog-title').textContent = title;
+  document.getElementById('dialog-text').textContent = text;
+  label.hidden = input === null;
+  field.required = input !== null;
+  field.value = input ?? '';
+  okButton.textContent = ok;
+  okButton.className = danger ? 'danger' : 'primary';
+  return new Promise((resolve) => {
+    dialog.addEventListener('close', () => {
+      if (dialog.returnValue !== 'ok') resolve(null);
+      else resolve(input === null ? '' : field.value.trim());
+    }, { once: true });
+    dialog.returnValue = '';
+    dialog.showModal();
+    if (input !== null) field.select();
+  });
+}
+
+function pair(device) {
+  act({ action: 'pair', mac: device.mac });
+}
+
+async function setPrimary(device, primary) {
+  let text = 'The add-on saves it to its configuration and restarts to start playing to this speaker.';
+  if (primary && primary.mac !== device.mac) {
+    text = `This replaces the current primary speaker, ${primary.name || primary.mac} (${primary.mac}). ${text}`;
+  }
+  const name = await ask({ title: 'Set as primary speaker', text, input: device.name || 'Bluetooth Speaker', ok: 'Save and restart' });
+  if (name !== null) act({ action: 'set_primary', mac: device.mac, name });
+}
+
+async function addExtra(device) {
+  const name = await ask({
+    title: 'Add as extra speaker',
+    text: 'It gets its own media_player in Home Assistant. The add-on saves it to its configuration and restarts.',
+    input: device.name || 'Bluetooth Speaker',
+    ok: 'Save and restart',
+  });
+  if (name !== null) act({ action: 'add_extra', mac: device.mac, name });
+}
+
+async function forget(device, configured) {
+  let text = 'It will have to be paired again before it can be used.';
+  if (configured) text += ' It is still configured in this add-on: remove it from the Configuration tab too if you no longer use it.';
+  const confirmed = await ask({ title: `Forget ${device.name || device.mac}?`, text, ok: 'Forget', danger: true });
+  if (confirmed !== null) act({ action: 'forget', mac: device.mac });
+}
+
+function renderBanner() {
+  const banner = document.getElementById('banner');
+  const job = state && state.job;
+  let kind = null;
+  let text = '';
+  let spinner = false;
+  let dismiss = null;
+  if (restartingSince) {
+    kind = 'info';
+    spinner = true;
+    text = 'Restarting the add-on to apply the new configuration…';
+  } else if (actionError) {
+    kind = 'error';
+    text = actionError;
+    dismiss = () => { actionError = ''; render(); };
+  } else if (job && job.id !== dismissedJobId) {
+    if (job.state === 'running') {
+      kind = 'info';
+      spinner = true;
+      text = job.message;
+    } else if (Date.now() / 1000 - job.updated < RECENT_JOB_SECONDS) {
+      kind = job.state === 'done' ? 'success' : 'error';
+      text = job.message;
+      dismiss = () => { dismissedJobId = job.id; render(); };
+    }
+  }
+  banner.replaceChildren();
+  banner.hidden = !kind;
+  if (!kind) return;
+  banner.className = `banner ${kind}`;
+  if (spinner) banner.append(el('span', { class: 'spinner', 'aria-hidden': 'true' }));
+  banner.append(el('p', { role: 'status' }, text));
+  if (dismiss) banner.append(el('button', { type: 'button', 'aria-label': 'Dismiss', onclick: dismiss }, '×'));
+}
+
+function renderSpeakers(locked) {
+  const box = document.getElementById('speakers');
+  box.replaceChildren();
+  if (!state) {
+    box.append(el('p', { class: 'muted' }, restartingSince ? 'Waiting for the add-on…' : 'Loading…'));
+    return;
+  }
+  if (!state.speakers.length) {
+    box.append(el('p', { class: 'muted' },
+      'No speaker configured yet: the add-on is in setup mode and its audio outputs are not started. ' +
+      'Scan for your speaker below, pair it, then set it as the primary speaker.'));
+    return;
+  }
+  const list = el('ul', { class: 'list' });
+  for (const speaker of state.speakers) {
+    list.append(el('li', { class: 'item' },
+      el('div', { class: 'who' },
+        el('div', { class: 'name' },
+          speaker.name || speaker.device_name || speaker.mac, ' ',
+          el('span', { class: 'badge role' }, speaker.role === 'primary' ? 'Primary' : 'Extra')),
+        el('div', { class: 'mac' }, speaker.mac),
+        badges(speaker)),
+      el('div', { class: 'actions' },
+        (!speaker.paired || !speaker.trusted) && button('Pair', 'primary', locked, () => pair(speaker)))));
+  }
+  box.append(list);
+}
+
+function renderDevices(locked) {
+  const box = document.getElementById('devices');
+  box.replaceChildren();
+  if (!state) return;
+  const showAll = document.getElementById('show-all').checked;
+  const configured = new Map(state.speakers.map((speaker) => [speaker.mac.toUpperCase(), speaker]));
+  const primary = state.speakers.find((speaker) => speaker.role === 'primary');
+  const devices = state.devices
+    .filter((device) => showAll || device.audio || configured.has(device.mac))
+    .sort((a, b) => (b.audio - a.audio) || a.name.localeCompare(b.name));
+
+  if (!devices.length) {
+    const scanned = state.job && state.job.type === 'scan' && state.job.state === 'done';
+    const hidden = state.devices.length;
+    let text = 'Click Scan to look for nearby speakers.';
+    if (scanned) {
+      text = 'No audio device found. Make sure the speaker is in pairing mode, close to the host, and not connected to a phone, then scan again.';
+      if (hidden) text += ` (${hidden} non-audio device${hidden > 1 ? 's' : ''} hidden.)`;
+    }
+    box.append(el('p', { class: 'muted', style: 'margin-top: 12px' }, text));
+    return;
+  }
+
+  const list = el('ul', { class: 'list' });
+  for (const device of devices) {
+    const conf = configured.get(device.mac);
+    const role = conf && el('span', { class: 'badge role' }, conf.role === 'primary' ? 'Primary' : 'Extra');
+    list.append(el('li', { class: 'item' },
+      el('div', { class: 'who' },
+        el('div', { class: 'name' }, device.name || device.mac, ' ', role),
+        el('div', { class: 'mac' }, device.mac),
+        badges(device)),
+      el('div', { class: 'actions' },
+        (!device.paired || !device.trusted) && button('Pair', 'primary', locked, () => pair(device)),
+        device.paired && !(conf && conf.role === 'primary') &&
+          button('Set as primary', '', locked, () => setPrimary(device, primary)),
+        device.paired && primary && !conf && button('Add as extra', '', locked, () => addExtra(device)),
+        device.known && button('Forget', 'danger', locked, () => forget(device, conf)))));
+  }
+  box.append(list);
+}
+
+function render() {
+  const locked = Boolean(pending || restartingSince || !state || state.busy);
+  renderBanner();
+  renderSpeakers(locked);
+  renderDevices(locked);
+  const scan = document.getElementById('scan');
+  const scanning = state && state.busy && state.job && state.job.type === 'scan';
+  scan.disabled = locked;
+  scan.textContent = scanning ? 'Scanning…' : 'Scan (30 s)';
+}
+
+document.getElementById('scan').addEventListener('click', () => act({ action: 'scan' }));
+document.getElementById('show-all').addEventListener('change', render);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+refresh();
+</script>
+</body>
+</html>

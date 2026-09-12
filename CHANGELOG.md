@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.4.0
+- Added a **pairing page**, opened from a new **Bluetooth Audio** panel in
+  the Home Assistant sidebar (ingress, administrators only): scan for
+  nearby Bluetooth Classic audio devices, pair, trust and connect a
+  speaker, then set it as the primary speaker or add it as an extra one.
+  The add-on writes it into its own configuration through the Supervisor
+  API and restarts by itself. First-time setup no longer needs the
+  Terminal & SSH add-on and a `bluetoothctl` session; that manual
+  procedure stays documented as a fallback, for speakers that ask for a
+  PIN code — see [Pairing your speaker](README.md#pairing-your-speaker-first-time-setup).
+- `bluetooth_mac` can now be left empty: the add-on then starts in setup
+  mode (pairing page only, no MPD or `media_player` yet) instead of
+  failing config validation.
+- The pairing page's web server (busybox `httpd`) listens only on the
+  internal Supervisor network and only accepts Home Assistant's ingress
+  proxy: with `host_network`, it would otherwise be reachable,
+  unauthenticated, from the whole LAN. No additional Supervisor API
+  permission is requested (`hassio_api` stays off).
+- Added the missing `extra_speakers` description to the Configuration tab.
+
 ## 2.3.0
 - Added multi-speaker support
   ([GitHub issue #3](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/issues/3)):

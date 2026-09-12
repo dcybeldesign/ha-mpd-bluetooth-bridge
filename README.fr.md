@@ -38,6 +38,12 @@ sortie secondaire optionnelle.
   génère `/etc/mpd.conf`, connecte l'enceinte via `bluetoothctl`, puis
   démarre MPD. Le fournisseur "MPD Players" de Music Assistant s'y
   connecte via le port standard du protocole MPD (`6600/tcp`).
+- **Page d'appairage** (ingress Home Assistant, panneau **Bluetooth
+  Audio** dans le menu latéral) : une petite page web servie par `httpd`
+  de busybox, avec des scripts shell qui pilotent `bluetoothctl`. Elle
+  recherche les appareils audio Bluetooth Classic, les appaire, leur fait
+  confiance, puis enregistre l'enceinte choisie dans la configuration de
+  l'add-on via l'API du Supervisor.
 - Une boucle de fond vérifie la connexion Bluetooth toutes les
   `reconnect_interval` secondes (30s par défaut) et reconnecte
   automatiquement l'enceinte si elle se déconnecte (mise en veille, hors
@@ -72,21 +78,65 @@ moyen d'obtenir la découverte automatique DLNA/UPnP sans `host_network`.
   Développé et testé sur un **Raspberry Pi 4** (Bluetooth 5.0 intégré).
   Voir [Portabilité](#portabilité-au-delà-du-raspberry-pi-4) ci-dessous
   pour les autres matériels.
-- Un accès terminal/shell à cet hôte (voir l'étape 1 de
+- Une enceinte Bluetooth que vous pouvez mettre en mode appairage. Pas
+  besoin de terminal : le panneau **Bluetooth Audio** de l'add-on la
+  trouve et l'appaire, voir
   [Appairer votre enceinte](#appairer-votre-enceinte-première-installation)
-  ci-dessous si vous ne l'avez pas encore).
-- L'enceinte cible doit déjà être **appairée** avec l'hôte au préalable.
-  Cet add-on gère uniquement la connexion/reconnexion d'un appareil déjà
-  appairé, pas le premier appairage. Guide complet ci-dessous.
+  ci-dessous. Seules les enceintes qui demandent un code PIN nécessitent
+  encore la [procédure manuelle](#appairage-manuel-solution-de-repli),
+  qui demande un accès terminal à l'hôte.
 - [Music Assistant](https://www.music-assistant.io/) n'est nécessaire que
   si vous comptez utiliser la sortie MPD optionnelle (`enable_mpd`). Le
   `media_player` natif fonctionne sans lui.
 
 ## Appairer votre enceinte (première installation)
 
-À faire une fois par enceinte, **avant** d'installer l'add-on. L'add-on ne
-peut que reconnecter une enceinte que Home Assistant connaît déjà, il ne
-peut pas faire le premier appairage à votre place.
+À faire une fois par enceinte, directement depuis la page d'appairage de
+l'add-on.
+
+**1. Installez et démarrez l'add-on** (voir [Installation](#installation)
+ci-dessous). Lors d'une première installation, laissez `bluetooth_mac`
+vide : l'add-on démarre alors en *mode configuration*, avec uniquement sa
+page d'appairage.
+
+**2. Ouvrez la page d'appairage.** Cliquez sur **Bluetooth Audio** dans le
+menu latéral de Home Assistant, ou sur **Ouvrir l'interface web** dans
+l'onglet Info de l'add-on. Elle n'est accessible qu'aux administrateurs de
+Home Assistant. La page elle-même est en anglais, comme les journaux de
+l'add-on.
+
+**3. Mettez votre enceinte en mode appairage.**
+Ça varie selon le modèle, généralement en maintenant le bouton
+d'alimentation ou Bluetooth quelques secondes jusqu'à ce qu'un voyant
+clignote. Vérifiez le manuel de votre enceinte en cas de doute. Si
+l'enceinte est connectée à un téléphone, déconnectez-la d'abord : beaucoup
+d'enceintes n'acceptent qu'une connexion à la fois.
+
+**4. Cliquez sur Scan.** Au bout d'environ 30 secondes, les appareils
+audio Bluetooth à proximité s'affichent par leur nom. Les téléphones, TV
+et autres appareils non audio sont masqués, sauf si vous cochez *Show
+non-audio devices*.
+
+**5. Cliquez sur Pair à côté de votre enceinte.** L'add-on l'appaire, lui
+fait confiance ("trust") et la connecte. Vous devriez entendre un son de
+connexion sur l'enceinte, et ses badges *Paired*, *Trusted* et
+*Connected* passent au vert. *Trusted* est ce qui permet ensuite la
+reconnexion automatique de l'add-on.
+
+**6. Cliquez sur Set as primary**, puis confirmez le nom à afficher dans
+Home Assistant. L'add-on enregistre l'enceinte dans sa propre
+configuration (`bluetooth_mac` et `speaker_name`) et redémarre tout seul ;
+le `media_player` natif apparaît ensuite comme décrit dans
+[Sortie media_player native](#sortie-media_player-native-dlnaupnp). Pour
+une autre enceinte, appairez-la de la même façon puis cliquez plutôt sur
+**Add as extra**, voir [Plusieurs enceintes](#plusieurs-enceintes).
+
+### Appairage manuel (solution de repli)
+
+Si la page d'appairage n'arrive pas à appairer votre enceinte
+(typiquement un ancien modèle qui demande un code PIN), appairez-la une
+fois à la main depuis un terminal, puis renseignez son adresse MAC dans
+l'option `bluetooth_mac` de l'add-on.
 
 **1. Ouvrez un terminal sur votre hôte Home Assistant.**
 Si taper des commandes dans Home Assistant est nouveau pour vous, allez
@@ -97,10 +147,8 @@ installez-le, démarrez-le, puis ouvrez-le depuis le menu latéral. Ça vous
 donne une invite de commande directement dans Home Assistant, pas besoin
 d'un client SSH séparé.
 
-**2. Mettez votre enceinte en mode appairage.**
-Ça varie selon le modèle, généralement en maintenant le bouton
-d'alimentation ou Bluetooth quelques secondes jusqu'à ce qu'un voyant
-clignote. Vérifiez le manuel de votre enceinte en cas de doute.
+**2. Mettez votre enceinte en mode appairage**, comme à l'étape 3
+ci-dessus.
 
 **3. Dans le terminal, lancez le scan :**
 ```
@@ -137,8 +185,10 @@ quit
 - `connect` confirme que la liaison fonctionne tout de suite. Vous devriez
   entendre un son de connexion sur l'enceinte.
 
-**5. Gardez cette adresse MAC sous la main.** Vous la collerez dans
-l'option `bluetooth_mac` de l'add-on à l'étape suivante.
+**5. Renseignez cette adresse MAC** dans l'option `bluetooth_mac` de
+l'add-on (onglet Configuration), puis démarrez ou redémarrez l'add-on. La
+page d'appairage l'affichera ensuite avec ses badges *Paired*, *Trusted*
+et *Connected*.
 
 ## Installation
 
@@ -158,10 +208,12 @@ qu'à confirmer l'ajout.
    mises à jour) pour que l'add-on apparaisse. Il sera listé sous une
    section nommée d'après ce dépôt (ou sous "Applications locales" si
    vous avez copié le dossier manuellement).
-3. Cliquez sur l'add-on, installez-le, ouvrez l'onglet **Configuration**
-   et renseignez l'adresse MAC Bluetooth de votre enceinte notée plus
-   haut (obligatoire, voir [Configuration](#configuration)), puis
-   démarrez-le.
+3. Cliquez sur l'add-on, installez-le, puis démarrez-le. Lors d'une
+   première installation, laissez `bluetooth_mac` vide et suivez
+   [Appairer votre enceinte](#appairer-votre-enceinte-première-installation)
+   depuis le panneau **Bluetooth Audio** de l'add-on. Si vous avez déjà
+   appairé l'enceinte à la main, renseignez d'abord son adresse MAC dans
+   l'onglet **Configuration** (voir [Configuration](#configuration)).
 4. L'entité `media_player` native devrait apparaître automatiquement dans
    Home Assistant en quelques minutes, voir
    [Sortie media_player native](#sortie-media_player-native-dlnaupnp)
@@ -193,7 +245,7 @@ qu'à confirmer l'ajout.
 
 | Option | Description | Défaut |
 |---|---|---|
-| `bluetooth_mac` | Adresse MAC de l'enceinte Bluetooth (format `AA:BB:CC:DD:EE:FF`). **Obligatoire.** | *(aucune, à renseigner)* |
+| `bluetooth_mac` | Adresse MAC de l'enceinte Bluetooth principale (format `AA:BB:CC:DD:EE:FF`). Remplie automatiquement quand vous choisissez une enceinte sur la page d'appairage ; laissez-la vide lors d'une première installation pour démarrer en mode configuration (page d'appairage uniquement). | *(vide)* |
 | `speaker_name` | Nom cosmétique des sorties (MPD et le nom affiché du `media_player`). | `Bluetooth Speaker` |
 | `reconnect_interval` | Secondes entre deux vérifications de la connexion Bluetooth (10-300). | `30` |
 | `enable_mpd` | Démarre ou non le serveur MPD. La connexion Bluetooth et le `media_player` natif ne sont pas affectés dans un cas comme dans l'autre ; désactivez cette option si vous ne voulez que le `media_player` natif et n'utilisez pas Music Assistant. | `true` |
@@ -218,9 +270,10 @@ entité.
 ## Plusieurs enceintes
 
 Vous n'êtes pas limité à une seule enceinte Bluetooth. L'option
-`extra_speakers` (une liste d'entrées `{mac, name}`, ajoutables
-directement depuis l'onglet Configuration de l'add-on — pas besoin
-d'éditer du YAML) permet d'enregistrer des enceintes supplémentaires en
+`extra_speakers` (une liste d'entrées `{mac, name}`, ajoutables depuis la
+page d'appairage avec **Add as extra**, ou directement depuis l'onglet
+Configuration de l'add-on — pas besoin d'éditer du YAML) permet
+d'enregistrer des enceintes supplémentaires en
 plus de la principale (`bluetooth_mac`/`speaker_name`). Chaque enceinte
 obtient :
 
@@ -311,22 +364,31 @@ garder l'installation simple, en partant du principe que votre réseau
 Home Assistant est déjà de confiance. N'exposez pas ce port vers
 l'extérieur sans ajouter vos propres protections devant.
 
+La page d'appairage n'est accessible qu'à travers l'ingress de Home
+Assistant, donc derrière votre connexion Home Assistant, et uniquement
+pour les administrateurs. Comme l'add-on utilise `host_network`, son
+serveur web n'écoute volontairement que sur l'adresse du réseau interne
+du Supervisor et refuse tout autre client que le proxy ingress du
+Supervisor : il n'est pas joignable depuis votre réseau local.
+
 ## Dépannage
 
 - **L'add-on ne démarre pas / plante immédiatement** : regardez l'onglet
-  Journal de l'add-on. Une adresse `bluetooth_mac` absente ou mal
-  formatée fait échouer la validation de la config avant même que le
-  conteneur démarre. Vérifiez que vous avez bien copié l'adresse complète
-  avec des `:` (deux-points), pas des tirets ni sans séparateur.
+  Journal de l'add-on. Une adresse `bluetooth_mac` mal formatée fait
+  échouer la validation de la config avant même que le conteneur
+  démarre. Vérifiez que vous avez bien copié l'adresse complète avec des
+  `:` (deux-points), pas des tirets ni sans séparateur. Une adresse vide
+  est acceptée : l'add-on démarre alors en mode configuration, voir
+  [Appairer votre enceinte](#appairer-votre-enceinte-première-installation).
 - **"Failed to open audio output" / pas de son côté MPD, mais l'add-on
   tourne** : ça signifie presque toujours que l'enceinte n'est pas
   vraiment *appairée et de confiance ("trusted")*. Être "à portée" ou
-  "allumée" ne suffit pas. Reprenez la section
-  [Appairer votre enceinte](#appairer-votre-enceinte-première-installation)
-  et vérifiez que les commandes `pair` ET `trust` ont bien réussi (pas
-  seulement `connect`). Vous pouvez vérifier l'état à tout moment avec
-  `bluetoothctl info AA:BB:CC:DD:EE:FF` dans un terminal : cherchez
-  `Paired: yes`, `Trusted: yes` et `Connected: yes` dans le résultat.
+  "allumée" ne suffit pas. Ouvrez le panneau **Bluetooth Audio** de
+  l'add-on : les badges *Paired*, *Trusted* et *Connected* de l'enceinte
+  doivent tous être verts. Sinon, cliquez sur **Pair** à côté d'elle (sur
+  une enceinte déjà appairée, ça refait seulement le "trust", sans
+  refaire l'appairage), ou reprenez la section
+  [Appairer votre enceinte](#appairer-votre-enceinte-première-installation).
 - **L'entité `media_player` n'apparaît jamais** : vérifiez que
   `host_network: true` n'a pas été désactivé par erreur dans l'onglet
   Réseau de l'add-on, puis essayez le scan manuel décrit dans
@@ -342,11 +404,28 @@ l'extérieur sans ajouter vos propres protections devant.
   déconnexions/reconnexions Bluetooth rapprochées. Si ça persiste,
   redémarrer l'add-on contourne le problème en attendant.
 - **Mon enceinte se déconnecte sans arrêt / ne se reconnecte pas toute
-  seule** : vérifiez que `trust` a bien été exécuté pendant l'appairage
-  (étape 4). Sans ça, HAOS n'autorise pas la reconnexion automatique
-  dont dépend cet add-on. Vous pouvez relancer `trust
-  AA:BB:CC:DD:EE:FF` dans `bluetoothctl` à tout moment sans refaire tout
-  l'appairage.
+  seule** : vérifiez que son badge *Trusted* est vert sur la page
+  d'appairage. Sans ça, HAOS n'autorise pas la reconnexion automatique
+  dont dépend cet add-on. Cliquer sur **Pair** sur une enceinte déjà
+  appairée refait seulement le "trust", sans refaire tout l'appairage
+  (ou lancez `trust AA:BB:CC:DD:EE:FF` dans `bluetoothctl`).
+- **L'appairage échoue depuis la page d'appairage** : vérifiez que
+  l'enceinte est en mode appairage *au moment où vous cliquez sur Pair*
+  (beaucoup d'enceintes en sortent au bout d'une ou deux minutes), proche
+  de l'hôte, et déconnectée de tout téléphone. Les enceintes qui
+  demandent un code PIN ne peuvent pas être appairées depuis la page :
+  utilisez l'[appairage manuel](#appairage-manuel-solution-de-repli). Le
+  message d'erreur affiché sur la page, ainsi que l'onglet Journal de
+  l'add-on, indiquent la raison remontée par le Bluetooth.
+- **Le panneau Bluetooth Audio ne s'ouvre pas ou affiche une erreur** :
+  cherchez une ligne `Starting the pairing web UI` dans l'onglet Journal
+  de l'add-on. Si une erreur sur l'adresse ou le port ingress apparaît à
+  la place, redémarrez l'add-on ; le pont audio lui-même continue de
+  fonctionner dans tous les cas.
+- **Un autre add-on audio Bluetooth est installé** (par exemple Bluetooth
+  Audio Manager) : ne laissez pas deux add-ons gérer la même enceinte.
+  Chacun la reconnecte de son côté et ils finissent par se disputer la
+  connexion.
 - **Music Assistant affiche le lecteur MPD comme indisponible** :
   vérifiez que `enable_mpd` est activé et que vous avez bien utilisé le
   *nom d'hôte interne* de l'add-on, pas l'adresse IP de l'hôte (voir

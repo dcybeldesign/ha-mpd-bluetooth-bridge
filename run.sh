@@ -34,9 +34,10 @@ mkdir -p /var/lib/mpd/playlists /var/lib/mpd/music
 # --- 1. Lecture de la configuration utilisateur ---
 BT_MAC=$(bashio::config 'bluetooth_mac')
 # Adresse MAC de l'enceinte, saisie par l'utilisateur dans l'onglet
-# "Configuration" de l'add-on (ex: AA:BB:CC:DD:EE:FF). Champ obligatoire
-# (voir schema dans config.yaml) : aucune valeur par défaut n'est fournie,
-# chaque utilisateur doit renseigner l'adresse de SA propre enceinte.
+# "Configuration" de l'add-on (ex: AA:BB:CC:DD:EE:FF), ou écrite
+# automatiquement par la page d'appairage (2.4.0, voir étape 1ter). Peut
+# être vide depuis 2.4.0 (première installation, avant tout appairage) :
+# voir le mode configuration, étape 1quater.
 
 SPEAKER_NAME=$(bashio::config 'speaker_name')
 # Nom cosmétique de l'enceinte, affiché côté MPD (n'affecte pas le
@@ -56,6 +57,57 @@ DEFAULT_VOLUME=$(bashio::config 'default_volume')
 # Volume (%) restauré automatiquement si le sink PulseAudio de l'enceinte
 # est détecté muet ou à 0% (voir ensure_audio_sink, étape 4bis). Par défaut
 # 70 (voir config.yaml).
+
+# --- 1ter. Page d'appairage Bluetooth (ingress, 2.4.0) ---
+# Petit serveur web (httpd de busybox-extras) qui sert la page ouverte
+# depuis le panneau "Bluetooth Audio" de Home Assistant (voir webui/) :
+# scan, appairage, et choix de l'enceinte écrit directement dans la
+# configuration de l'add-on. Lancé AVANT toute connexion Bluetooth et même
+# sans enceinte configurée : c'est justement cette page qui permet d'en
+# appairer une sans terminal.
+#
+# Sécurité — le point le plus important de cette étape : l'add-on tourne
+# en host_network (voir config.yaml), donc écouter sur 0.0.0.0 exposerait
+# cette page, sans aucune authentification, à tout le réseau local. On
+# écoute donc UNIQUEMENT sur l'adresse interne par laquelle le Supervisor
+# joint l'add-on (en host_network, bashio::addon.ip_address renvoie la
+# passerelle du réseau interne hassio), sur le port attribué par le
+# Supervisor (ingress_port: 0 dans config.yaml). httpd.conf n'accepte en
+# plus que le proxy ingress lui-même (172.30.32.2). Côté navigateur, on
+# passe par la session Home Assistant (panneau réservé aux administrateurs).
+INGRESS_IP=$(bashio::addon.ip_address) || INGRESS_IP=""
+INGRESS_PORT=$(bashio::addon.ingress_port) || INGRESS_PORT=""
+if bashio::var.has_value "${INGRESS_IP}" && bashio::var.has_value "${INGRESS_PORT}"; then
+    mkdir -p /tmp/btui
+    bashio::log.info "Starting the pairing web UI on ${INGRESS_IP}:${INGRESS_PORT} (Home Assistant ingress only)..."
+    busybox-extras httpd -f -p "${INGRESS_IP}:${INGRESS_PORT}" -h /opt/btui/www -c /opt/btui/httpd.conf &
+    # "-f" (premier plan) + "&" : même principe que gmediarender plus bas,
+    # le processus reste un enfant du conteneur au lieu de se détacher.
+else
+    # Jamais bloquant : sans page d'appairage, le pont audio lui-même
+    # (connexion, MPD, media_player) doit continuer de fonctionner
+    # exactement comme avant pour une enceinte déjà configurée.
+    bashio::log.error "Could not read the ingress address/port from the Supervisor: pairing web UI not started." || true
+fi
+
+# --- 1quater. Mode configuration (aucune enceinte choisie, 2.4.0) ---
+# bluetooth_mac peut désormais rester vide (voir schema dans config.yaml) :
+# c'est l'état d'une première installation, avant d'avoir appairé une
+# enceinte depuis la page ci-dessus. Tout ce qui suit (sink PulseAudio,
+# MPD, gmediarender, boucles de surveillance) n'a aucun sens sans
+# enceinte : on s'arrête là, en gardant le conteneur (et donc la page
+# d'appairage) en vie. extra_speakers est ignoré dans ce mode. Choisir une
+# enceinte depuis la page écrit la configuration puis redémarre l'add-on,
+# qui repasse alors par le chemin normal ci-dessous.
+# bashio::config.has_value plutôt qu'un test sur ${BT_MAC} : si l'option
+# est carrément retirée de la configuration (champ facultatif vidé dans
+# l'interface de Home Assistant), bashio::config renvoie la chaîne "null"
+# et non une chaîne vide (vérifié dans lib/config.sh de bashio) — un test
+# sur ${BT_MAC} laisserait alors passer une adresse "null".
+if ! bashio::config.has_value 'bluetooth_mac'; then
+    bashio::log.warning "No speaker configured yet (bluetooth_mac is empty): open the \"Bluetooth Audio\" panel in the Home Assistant sidebar to scan for, pair and select a speaker."
+    exec tail -f /dev/null
+fi
 
 bashio::log.info "Target speaker: ${SPEAKER_NAME} (${BT_MAC})"
 
