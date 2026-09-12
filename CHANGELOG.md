@@ -9,7 +9,7 @@
   API and restarts by itself. First-time setup no longer needs the
   Terminal & SSH add-on and a `bluetoothctl` session; that manual
   procedure stays documented as a fallback, for speakers that ask for a
-  PIN code — see [Pairing your speaker](README.md#pairing-your-speaker-first-time-setup).
+  PIN code, see [Pairing your speaker](README.md#pairing-your-speaker-first-time-setup).
 - `bluetooth_mac` can now be left empty: the add-on then starts in setup
   mode (pairing page only, no MPD or `media_player` yet) instead of
   failing config validation.
@@ -31,7 +31,10 @@
   several speakers a Home Assistant entity could end up on the wrong
   speaker. Changing the primary speaker still moves the primary entity to
   the new primary speaker, see
-  [Multiple speakers](README.md#multiple-speakers).
+  [Multiple speakers](README.md#multiple-speakers). When updating from
+  2.3.0, each extra speaker moves to its new port once; its existing
+  `media_player` entity follows it on its own, with nothing to
+  reconfigure.
 
 ## 2.3.0
 - Added multi-speaker support
