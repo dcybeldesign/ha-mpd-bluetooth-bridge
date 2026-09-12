@@ -368,6 +368,18 @@ l'extérieur sans ajouter vos propres protections devant.
   supplémentaire, aucun changement de configuration nécessaire ici.
   Lancez `bluetoothctl list` pour confirmer qu'il est bien actif comme
   contrôleur `[default]`.
+- **Une enceinte renommée dans l'add-on garde l'ancien nom sur son entité
+  `media_player`** : c'est le fonctionnement de l'intégration DLNA de
+  Home Assistant, pas quelque chose que l'add-on contrôle. Le nom de
+  l'entité est fixé une seule fois, quand Home Assistant découvre
+  l'enceinte, puis n'est plus jamais mis à jour. L'add-on garde le même
+  identifiant pour une enceinte (dérivé de son adresse MAC), donc Home
+  Assistant voit toujours le même appareil. Renommez l'entité
+  directement dans Home Assistant (**Paramètres → Appareils et services
+  → Entités**), ou supprimez l'entrée **DLNA Digital Media Renderer** de
+  cette enceinte pour que Home Assistant la redécouvre avec le nouveau
+  nom (son identifiant d'entité peut alors changer, vérifiez vos
+  automatisations).
 
 ## Comment ce projet a été fait
 

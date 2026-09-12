@@ -339,6 +339,16 @@ protections in front of it.
   additional controller, no configuration change needed here. Run
   `bluetoothctl list` to confirm it's active as the `[default]`
   controller.
+- **Renamed a speaker in the add-on, but its `media_player` entity kept
+  the old name**: this is how Home Assistant's DLNA integration works,
+  not something the add-on controls. The entity name is set once, when
+  Home Assistant first discovers the speaker, and is never updated
+  afterwards. The add-on keeps the same identifier for a speaker (derived
+  from its MAC address), so Home Assistant still sees the same device.
+  Rename the entity directly in Home Assistant (**Settings → Devices &
+  services → Entities**), or delete that speaker's **DLNA Digital Media
+  Renderer** entry and let Home Assistant rediscover it with the new name
+  (its entity ID may change, so check your automations).
 
 ## How this was built
 
