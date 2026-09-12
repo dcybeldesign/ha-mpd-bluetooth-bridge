@@ -36,8 +36,9 @@ original MPD bridge available as an optional second output.
   speaker's MAC address, connects the speaker via `bluetoothctl`, then
   starts MPD. Music Assistant's "MPD Players" provider connects to it
   over the standard MPD protocol port (`6600/tcp`).
-- **Pairing page** (Home Assistant ingress, **Bluetooth Audio** panel in
-  the sidebar): a small web page served by busybox `httpd`, with shell
+- **Pairing page** (Home Assistant ingress, opened with **Open Web UI** or
+  from an optional **Bluetooth Audio** sidebar panel): a small web page
+  served by busybox `httpd`, with shell
   scripts calling `bluetoothctl`. It scans for Bluetooth Classic audio
   devices, pairs and trusts them, and writes the speaker you pick into
   the add-on's own configuration through the Supervisor API.
@@ -90,9 +91,11 @@ Do this once per speaker, straight from the add-on's own pairing page.
 below). On a first install, leave `bluetooth_mac` empty: the add-on then
 starts in *setup mode*, with only its pairing page running.
 
-**2. Open the pairing page.** Click **Bluetooth Audio** in the Home
-Assistant sidebar, or **Open Web UI** on the add-on's Info tab. It's only
-available to Home Assistant administrators.
+**2. Open the pairing page.** On the add-on's **Info** tab, click
+**Open Web UI**. To get a **Bluetooth Audio** shortcut in the Home
+Assistant sidebar instead, turn on **Show in sidebar** on that same tab:
+it's off by default. The page is only available to Home Assistant
+administrators.
 
 **3. Put your speaker into pairing mode.**
 This varies by speaker model, usually holding the power or Bluetooth
@@ -429,6 +432,8 @@ first language), were written with Claude, an AI assistant, from the
 very first commit. Only a couple of commits explicitly carry a
 `Co-Authored-By` line for it; the habit of adding that line came later
 and wasn't applied retroactively to the rest of the history.
+The pairing page is the exception: it was contributed by cddu33, see
+[Contributors](#contributors).
 
 ## Disclaimer
 
@@ -452,6 +457,11 @@ If this add-on has been useful to you, you can support its development:
 ## Author
 
 [dcybeldesign](https://github.com/dcybeldesign)
+
+## Contributors
+
+- [cddu33](https://github.com/cddu33): the pairing page
+  ([#4](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/pull/4))
 
 ## License
 

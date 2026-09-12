@@ -1,11 +1,14 @@
 # Changelog
 
 ## 2.4.0
-- Added a **pairing page**, opened from a new **Bluetooth Audio** panel in
-  the Home Assistant sidebar (ingress, administrators only): scan for
-  nearby Bluetooth Classic audio devices, pair, trust and connect a
-  speaker, then set it as the primary speaker or add it as an extra one.
-  The add-on writes it into its own configuration through the Supervisor
+- Added a **pairing page**, contributed by [@cddu33](https://github.com/cddu33)
+  in [#4](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/pull/4)
+  (ingress, administrators only): scan for nearby Bluetooth Classic audio
+  devices, pair, trust and connect a speaker, then set it as the primary
+  speaker or add it as an extra one. Open it with **Open Web UI** on the
+  add-on's Info tab, or turn on **Show in sidebar** there to get a
+  **Bluetooth Audio** panel in the sidebar. The add-on writes the chosen
+  speaker into its own configuration through the Supervisor
   API and restarts by itself. First-time setup no longer needs the
   Terminal & SSH add-on and a `bluetoothctl` session; that manual
   procedure stays documented as a fallback, for speakers that ask for a

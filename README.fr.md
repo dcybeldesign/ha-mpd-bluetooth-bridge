@@ -38,8 +38,9 @@ sortie secondaire optionnelle.
   génère `/etc/mpd.conf`, connecte l'enceinte via `bluetoothctl`, puis
   démarre MPD. Le fournisseur "MPD Players" de Music Assistant s'y
   connecte via le port standard du protocole MPD (`6600/tcp`).
-- **Page d'appairage** (ingress Home Assistant, panneau **Bluetooth
-  Audio** dans le menu latéral) : une petite page web servie par `httpd`
+- **Page d'appairage** (ingress Home Assistant, ouverte par **Ouvrir
+  l'interface utilisateur web** ou depuis un panneau **Bluetooth Audio**
+  facultatif dans la barre latérale) : une petite page web servie par `httpd`
   de busybox, avec des scripts shell qui pilotent `bluetoothctl`. Elle
   recherche les appareils audio Bluetooth Classic, les appaire, leur fait
   confiance, puis enregistre l'enceinte choisie dans la configuration de
@@ -99,11 +100,12 @@ ci-dessous). Lors d'une première installation, laissez `bluetooth_mac`
 vide : l'add-on démarre alors en *mode configuration*, avec uniquement sa
 page d'appairage.
 
-**2. Ouvrez la page d'appairage.** Cliquez sur **Bluetooth Audio** dans le
-menu latéral de Home Assistant, ou sur **Ouvrir l'interface web** dans
-l'onglet Info de l'add-on. Elle n'est accessible qu'aux administrateurs de
-Home Assistant. La page elle-même est en anglais, comme les journaux de
-l'add-on.
+**2. Ouvrez la page d'appairage.** Dans l'onglet **Info** de l'add-on,
+cliquez sur **Ouvrir l'interface utilisateur web**. Pour avoir plutôt un
+raccourci **Bluetooth Audio** dans la barre latérale de Home Assistant,
+activez **Afficher dans la barre latérale** dans ce même onglet : l'option
+est désactivée par défaut. La page n'est accessible qu'aux administrateurs
+de Home Assistant, et elle est en anglais, comme les journaux de l'add-on.
 
 **3. Mettez votre enceinte en mode appairage.**
 Ça varie selon le modèle, généralement en maintenant le bouton
@@ -477,6 +479,8 @@ assistant IA, depuis le tout premier commit. Seuls quelques commits
 portent explicitement une ligne `Co-Authored-By` à ce titre ; l'habitude
 de l'ajouter est venue plus tard et n'a pas été appliquée rétroactivement
 au reste de l'historique.
+La page d'appairage fait exception : elle a été proposée par cddu33, voir
+[Contributeurs](#contributeurs).
 
 ## Avertissement
 
@@ -502,6 +506,11 @@ Si cet add-on vous a été utile, vous pouvez soutenir son développement :
 ## Auteur
 
 [dcybeldesign](https://github.com/dcybeldesign)
+
+## Contributeurs
+
+- [cddu33](https://github.com/cddu33) : la page d'appairage
+  ([#4](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/pull/4))
 
 ## Licence
 
