@@ -14,7 +14,7 @@ name: "Bluetooth Audio Bridge"
 # Ancien nom : "Bluetooth Speaker MPD Bridge" (ancien nom encore avant :
 # "MPD JBL Bridge").
 
-version: "2.4.0"
+version: "2.4.1"
 # Version de l'add-on. À incrémenter à chaque modification si on veut
 # que le Supervisor propose une "mise à jour" plus tard.
 # Bump en 2.0.0 : changement de nom/slug (rupture de compatibilité pour
@@ -34,6 +34,13 @@ version: "2.4.0"
 # Bump en 2.4.0 (2026-09-12) : page d'appairage Bluetooth intégrée à Home
 # Assistant (ingress, voir la section "Page d'appairage" plus bas et le
 # CHANGELOG) — plus besoin de terminal pour le premier appairage.
+# Bump en 2.4.1 (2026-09-14) : le media_player natif (DLNA) de chaque
+# enceinte passe désormais "indisponible" quand elle se déconnecte, au
+# lieu de rester affiché à tort comme disponible (voir CHANGELOG, réponse
+# à la GitHub issue #6). Testé sur la branche `fix/issue-6-dlna-availability`
+# avant merge dans master, en deux passages : une enceinte seule (JBL),
+# puis deux enceintes (JBL + JZ-B5W2) pour vérifier qu'elles restent bien
+# indépendantes l'une de l'autre.
 
 slug: "bluetooth_audio_bridge"
 # Identifiant technique unique de l'add-on (utilisé dans les URLs internes,

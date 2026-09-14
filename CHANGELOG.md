@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.4.1
+- Fixed the native `media_player` entity staying "available" in Home
+  Assistant even after its speaker disconnected. The DLNA renderer used
+  to keep running regardless of the Bluetooth connection, so Home
+  Assistant kept seeing a device that answered, just with nothing to
+  play. Each speaker's renderer now stops as soon as a disconnect is
+  detected and restarts once the speaker reconnects, so the entity
+  reflects the real connection state. This only covers the native
+  `media_player` (DLNA); the optional MPD server is the add-on's main
+  process and can't be stopped the same way without stopping the add-on
+  itself. Reported in
+  [#6](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/issues/6).
+- Going back to "available" after a reconnect can be slow, or need a
+  full Home Assistant **Core** restart, the same discovery limitation
+  already described for a newly added speaker, see
+  [Multiple speakers](README.md#multiple-speakers).
+
 ## 2.4.0
 - Added a **pairing page**, contributed by [@cddu33](https://github.com/cddu33)
   in [#4](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/pull/4)

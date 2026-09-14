@@ -245,6 +245,13 @@ Once the entity exists, you can send audio to it like any other
 using the `tts.speak` or `media_player.play_media` service with
 `media_player_entity_id` targeting this entity.
 
+The entity reflects the speaker's actual Bluetooth connection: it goes
+**unavailable** while the speaker is disconnected, instead of staying
+"idle" as if nothing was wrong, and comes back once it reconnects. This
+only applies to this native `media_player`; the optional MPD output
+doesn't have an equivalent, since MPD is the add-on's main process and
+can't be stopped and restarted the same way.
+
 ## Multiple speakers
 
 You're not limited to one Bluetooth speaker. The `extra_speakers` option
@@ -370,6 +377,11 @@ than the Supervisor's ingress proxy: it isn't reachable from your LAN.
   Also check the add-on's log for a line confirming `gmediarender`
   started; if it's missing, the add-on didn't build correctly, open an
   issue with the build log.
+- **The `media_player` entity stays unavailable after the speaker has
+  reconnected**: this can take a while, or need a full **Home Assistant
+  Core restart** (Settings → System → Restart, not just the add-on), the
+  same SSDP discovery limitation as a newly added speaker's entity not
+  showing up, see [Multiple speakers](#multiple-speakers).
 - **Sound stopped after the speaker lost connection for a while (e.g. low
   battery), even though it looks reconnected now**: the add-on checks
   that the PulseAudio audio sink still exists and re-forces the

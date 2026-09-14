@@ -269,6 +269,14 @@ script, ou une automatisation utilisant le service `tts.speak` ou
 `media_player.play_media` avec `media_player_entity_id` ciblant cette
 entité.
 
+L'entité reflète l'état réel de la connexion Bluetooth de l'enceinte :
+elle passe **indisponible** pendant que l'enceinte est déconnectée, au
+lieu de rester affichée "idle" comme si de rien n'était, et revient une
+fois la reconnexion faite. Ça ne concerne que ce `media_player` natif ;
+la sortie MPD optionnelle n'a pas d'équivalent, MPD étant le processus
+principal de l'add-on, qu'on ne peut pas arrêter puis relancer de la même
+façon.
+
 ## Plusieurs enceintes
 
 Vous n'êtes pas limité à une seule enceinte Bluetooth. L'option
@@ -406,6 +414,12 @@ Supervisor : il n'est pas joignable depuis votre réseau local.
   Vérifiez aussi le journal de l'add-on pour une ligne confirmant le
   démarrage de `gmediarender` ; si elle manque, l'add-on ne s'est pas
   construit correctement, ouvrez une issue avec le journal de build.
+- **L'entité `media_player` reste indisponible après que l'enceinte s'est
+  reconnectée** : ça peut prendre du temps, ou nécessiter un redémarrage
+  complet de **HA Core** (Paramètres → Système → Redémarrer, pas
+  seulement l'add-on), la même limitation de découverte SSDP que pour
+  l'entité d'une enceinte nouvellement ajoutée qui n'apparaît pas, voir
+  [Plusieurs enceintes](#plusieurs-enceintes).
 - **Le son s'est arrêté après une perte de connexion prolongée de
   l'enceinte (batterie faible par exemple), même si elle semble
   reconnectée maintenant** : l'add-on vérifie que le sink audio
