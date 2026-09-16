@@ -202,25 +202,46 @@ devices_update() {
 # bt_scan_session <secondes> [mac]
 # Scan Bluetooth Classic, suivi d'un appairage si une adresse est donnée.
 #
-# Tout se passe dans UNE SEULE session bluetoothctl, alimentée ligne par
-# ligne sur son entrée standard, et non en plusieurs appels séparés
-# (bluetoothctl scan on, puis bluetoothctl pair...) — trois raisons,
-# vérifiées dans le code de BlueZ :
+# Tout se passe dans UNE SEULE session bluetoothctl, alimentée au fil de
+# l'eau sur son entrée standard via un tube nommé (et non en plusieurs
+# appels séparés, ni via un simple pipe figé) — quatre raisons, vérifiées
+# dans le code de BlueZ :
 # - BlueZ rattache un scan au client D-Bus qui l'a lancé et l'arrête dès
 #   que ce client se termine ;
 # - un appareil découvert mais non appairé est oublié ~30 s après la fin
 #   du scan ("TemporaryTimeout"), trop court pour enchaîner sereinement ;
 # - en mode non interactif, bluetoothctl n'enregistre aucun "agent"
 #   d'appairage. On en déclare donc un explicitement, en NoInputNoOutput :
-#   le mode "Just Works" des enceintes, sans écran ni clavier.
+#   le mode "Just Works" des enceintes, sans écran ni clavier ;
+# - certaines enceintes demandent quand même une confirmation Secure Simple
+#   Pairing (comparaison numérique) même avec un agent NoInputNoOutput
+#   (issue #7) : sans tube nommé, impossible de lire cette demande pendant
+#   que la session tourne pour y répondre, la session finit par expirer
+#   avec AuthenticationTimeout.
 # "transport bredr" limite le scan au Bluetooth Classic (les enceintes
 # A2DP), pour déranger le moins possible les scans BLE de Home Assistant.
-# Limite connue : les enceintes (anciennes) qui exigent un code PIN ne
-# peuvent pas être appairées ainsi — procédure manuelle dans le README.
+# Limite connue, différente du cas ci-dessus : les enceintes (anciennes)
+# qui exigent un code PIN ne peuvent pas être appairées ainsi — procédure
+# manuelle dans le README. Une demande de code PIN ("Enter PIN code") n'est
+# jamais confirmée automatiquement, seule la ligne exacte "Request
+# confirmation" (oui/non, sans code à saisir) l'est.
 bt_scan_session() {
     local seconds="$1" mac="${2:-}"
+    local fifo="${BTUI_STATE_DIR}/bluetoothctl.in"
     mkdir -p "${BTUI_STATE_DIR}"
     : >"${BTUI_SESSION_LOG}"
+    rm -f "${fifo}"
+    mkfifo "${fifo}"
+
+    # Ouvert en lecture-écriture (<>) : contrairement à un tube ouvert
+    # seulement en écriture, ça ne bloque jamais en attente d'un lecteur
+    # (comportement standard des FIFO sous Linux), et garder ce
+    # descripteur ouvert pendant toute la session évite que bluetoothctl
+    # ne voie une fin de fichier prématurée entre deux commandes.
+    exec {BTUI_FIFO_FD}<>"${fifo}"
+    bluetoothctl <&"${BTUI_FIFO_FD}" >"${BTUI_SESSION_LOG}" 2>&1 &
+    local bt_pid=$!
+
     {
         # Laisse à bluetoothctl le temps de récupérer l'adaptateur sur
         # D-Bus : des commandes envoyées trop tôt échouent avec "No
@@ -233,27 +254,38 @@ bt_scan_session() {
         echo "transport bredr"
         echo "back"
         echo "scan on"
-        local i
-        for ((i = 0; i < seconds; i++)); do
+    } >&"${BTUI_FIFO_FD}"
+
+    local i
+    for ((i = 0; i < seconds; i++)); do
+        sleep 1
+        # Appairage : inutile d'attendre la fin du scan dès que BlueZ
+        # connaît l'appareil visé.
+        if [ -n "${mac}" ] && bt_is_known "${mac}"; then
+            break
+        fi
+    done
+    echo "scan off" >&"${BTUI_FIFO_FD}"
+
+    if [ -n "${mac}" ]; then
+        echo "pair ${mac}" >&"${BTUI_FIFO_FD}"
+        local confirmed=false
+        for ((i = 0; i < BTUI_PAIR_TIMEOUT; i++)); do
             sleep 1
-            # Appairage : inutile d'attendre la fin du scan dès que BlueZ
-            # connaît l'appareil visé.
-            if [ -n "${mac}" ] && bt_is_known "${mac}"; then
+            if bt_is_paired "${mac}" || grep -q "Failed to pair" "${BTUI_SESSION_LOG}"; then
                 break
             fi
+            if [ "${confirmed}" = false ] && grep -q "Request confirmation" "${BTUI_SESSION_LOG}"; then
+                echo "yes" >&"${BTUI_FIFO_FD}"
+                confirmed=true
+            fi
         done
-        echo "scan off"
-        if [ -n "${mac}" ]; then
-            echo "pair ${mac}"
-            for ((i = 0; i < BTUI_PAIR_TIMEOUT; i++)); do
-                sleep 1
-                if bt_is_paired "${mac}" || grep -q "Failed to pair" "${BTUI_SESSION_LOG}"; then
-                    break
-                fi
-            done
-        fi
-        echo "quit"
-    } | bluetoothctl >"${BTUI_SESSION_LOG}" 2>&1 || true
+    fi
+
+    echo "quit" >&"${BTUI_FIFO_FD}"
+    exec {BTUI_FIFO_FD}>&-
+    wait "${bt_pid}" 2>/dev/null || true
+    rm -f "${fifo}"
 }
 
 # ============================================================
