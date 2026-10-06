@@ -17,6 +17,8 @@
   from the page without scanning first. It warns you when the speaker is
   still configured in the add-on. Suggested while discussing
   [#8](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/issues/8).
+- Fixed a stray "Name shown in Home Assistant" field showing up in the
+  Forget confirmation of the pairing page, where no name is needed.
 
 ## 2.4.2
 - Added a **`renderer_volume`** option (1-100, default `100`) setting the
