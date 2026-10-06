@@ -44,7 +44,10 @@ sortie secondaire optionnelle.
   de busybox, avec des scripts shell qui pilotent `bluetoothctl`. Elle
   recherche les appareils audio Bluetooth Classic, les appaire, leur fait
   confiance, puis enregistre l'enceinte choisie dans la configuration de
-  l'add-on via l'API du Supervisor.
+  l'add-on via l'API du Supervisor. Elle permet aussi d'oublier une
+  enceinte, ou d'en mettre une en pause pour qu'un autre appareil
+  l'utilise, voir
+  [Laisser un autre appareil utiliser une enceinte](#laisser-un-autre-appareil-utiliser-une-enceinte-pause).
 - Une boucle de fond vérifie la connexion Bluetooth toutes les
   `reconnect_interval` secondes (30s par défaut) et reconnecte
   automatiquement l'enceinte si elle se déconnecte (mise en veille, hors
@@ -106,7 +109,11 @@ raccourci **Bluetooth Audio** dans la barre latérale de Home Assistant,
 activez **Afficher dans la barre latérale** dans ce même onglet : l'option
 est désactivée par défaut. La page s'affiche en français ou en anglais selon
 la langue de votre navigateur (en anglais si la vôtre n'est pas disponible),
-et ajouter `?lang=fr` ou `?lang=en` à son adresse impose une langue. La page n'est accessible qu'aux administrateurs
+et ajouter `?lang=fr` ou `?lang=en` à son adresse impose une langue. Les noms de boutons et de
+badges cités plus bas sont ceux de la page en français ; en anglais, ce
+sont *Scan*, *Pair*, *Forget*, *Set as primary*, *Add as extra*, *Pause*
+et *Resume* pour les boutons, *Paired*, *Trusted* et *Connected* pour les
+badges, et *Show non-audio devices* pour la case à cocher. La page n'est accessible qu'aux administrateurs
 de Home Assistant, et elle est en anglais, comme les journaux de l'add-on.
 
 **3. Mettez votre enceinte en mode appairage.**
@@ -116,24 +123,31 @@ clignote. Vérifiez le manuel de votre enceinte en cas de doute. Si
 l'enceinte est connectée à un téléphone, déconnectez-la d'abord : beaucoup
 d'enceintes n'acceptent qu'une connexion à la fois.
 
-**4. Cliquez sur Scan.** Au bout d'environ 30 secondes, les appareils
+**4. Cliquez sur Scanner.** Au bout d'environ 30 secondes, les appareils
 audio Bluetooth à proximité s'affichent par leur nom. Les téléphones, TV
-et autres appareils non audio sont masqués, sauf si vous cochez *Show
-non-audio devices*.
+et autres appareils non audio sont masqués, sauf si vous cochez *Afficher
+les appareils non audio*.
 
-**5. Cliquez sur Pair à côté de votre enceinte.** L'add-on l'appaire, lui
+**5. Cliquez sur Appairer à côté de votre enceinte.** L'add-on l'appaire, lui
 fait confiance ("trust") et la connecte. Vous devriez entendre un son de
-connexion sur l'enceinte, et ses badges *Paired*, *Trusted* et
-*Connected* passent au vert. *Trusted* est ce qui permet ensuite la
+connexion sur l'enceinte, et ses badges *Appairée*, *De confiance* et
+*Connectée* passent au vert. *De confiance* est ce qui permet ensuite la
 reconnexion automatique de l'add-on.
 
-**6. Cliquez sur Set as primary**, puis confirmez le nom à afficher dans
+**6. Cliquez sur Définir comme principale**, puis confirmez le nom à afficher dans
 Home Assistant. L'add-on enregistre l'enceinte dans sa propre
 configuration (`bluetooth_mac` et `speaker_name`) et redémarre tout seul ;
 le `media_player` natif apparaît ensuite comme décrit dans
 [Sortie media_player native](#sortie-media_player-native-dlnaupnp). Pour
 une autre enceinte, appairez-la de la même façon puis cliquez plutôt sur
-**Add as extra**, voir [Plusieurs enceintes](#plusieurs-enceintes).
+**Ajouter comme supplémentaire**, voir [Plusieurs enceintes](#plusieurs-enceintes).
+
+**Gérer vos enceintes ensuite.** La section **Enceintes configurées**, en
+haut de la page, liste les enceintes utilisées par l'add-on avec leur
+état. **Oublier** désappaire une enceinte de l'hôte (pour la réappairer
+de zéro, cliquez sur **Appairer** une fois qu'elle est de nouveau en mode
+appairage), et **Pause** laisse un autre appareil l'utiliser un moment, voir
+[Laisser un autre appareil utiliser une enceinte](#laisser-un-autre-appareil-utiliser-une-enceinte-pause).
 
 ### Appairage manuel (solution de repli)
 
@@ -191,8 +205,8 @@ quit
 
 **5. Renseignez cette adresse MAC** dans l'option `bluetooth_mac` de
 l'add-on (onglet Configuration), puis démarrez ou redémarrez l'add-on. La
-page d'appairage l'affichera ensuite avec ses badges *Paired*, *Trusted*
-et *Connected*.
+page d'appairage l'affichera ensuite avec ses badges *Appairée*, *De
+confiance* et *Connectée*.
 
 ## Installation
 
@@ -284,7 +298,7 @@ façon.
 
 Vous n'êtes pas limité à une seule enceinte Bluetooth. L'option
 `extra_speakers` (une liste d'entrées `{mac, name}`, ajoutables depuis la
-page d'appairage avec **Add as extra**, ou directement depuis l'onglet
+page d'appairage avec **Ajouter comme supplémentaire**, ou directement depuis l'onglet
 Configuration de l'add-on — pas besoin d'éditer du YAML) permet
 d'enregistrer des enceintes supplémentaires en
 plus de la principale (`bluetooth_mac`/`speaker_name`). Chaque enceinte
@@ -341,14 +355,14 @@ utilisez **Pause** sur la carte de l'enceinte dans la page d'appairage :
 
 1. Cliquez sur **Pause** et indiquez au bout de combien de minutes l'add-on
    doit se reconnecter tout seul, ou `0` pour attendre que vous cliquiez
-   sur **Resume**.
+   sur **Reprendre**.
 2. L'add-on déconnecte l'enceinte, garde son appairage et refuse de se
    reconnecter à elle. Son `media_player` devient indisponible pendant ce
    temps.
 3. Connectez votre téléphone à l'enceinte (il doit déjà être appairé avec
    elle) et lancez la lecture.
 4. Quand vous avez fini, déconnectez le téléphone (coupez son Bluetooth ou
-   déconnectez-le de l'enceinte) et cliquez sur **Resume**, ou attendez la
+   déconnectez-le de l'enceinte) et cliquez sur **Reprendre**, ou attendez la
    minuterie. L'add-on se reconnecte aussitôt, et le `media_player`
    revient en une trentaine de secondes environ.
 
@@ -433,8 +447,8 @@ Supervisor : il n'est pas joignable depuis votre réseau local.
   tourne** : ça signifie presque toujours que l'enceinte n'est pas
   vraiment *appairée et de confiance ("trusted")*. Être "à portée" ou
   "allumée" ne suffit pas. Ouvrez le panneau **Bluetooth Audio** de
-  l'add-on : les badges *Paired*, *Trusted* et *Connected* de l'enceinte
-  doivent tous être verts. Sinon, cliquez sur **Pair** à côté d'elle (sur
+  l'add-on : les badges *Appairée*, *De confiance* et *Connectée* de l'enceinte
+  doivent tous être verts. Sinon, cliquez sur **Appairer** à côté d'elle (sur
   une enceinte déjà appairée, ça refait seulement le "trust", sans
   refaire l'appairage), ou reprenez la section
   [Appairer votre enceinte](#appairer-votre-enceinte-première-installation).
@@ -459,13 +473,13 @@ Supervisor : il n'est pas joignable depuis votre réseau local.
   déconnexions/reconnexions Bluetooth rapprochées. Si ça persiste,
   redémarrer l'add-on contourne le problème en attendant.
 - **Mon enceinte se déconnecte sans arrêt / ne se reconnecte pas toute
-  seule** : vérifiez que son badge *Trusted* est vert sur la page
+  seule** : vérifiez que son badge *De confiance* est vert sur la page
   d'appairage. Sans ça, HAOS n'autorise pas la reconnexion automatique
-  dont dépend cet add-on. Cliquer sur **Pair** sur une enceinte déjà
+  dont dépend cet add-on. Cliquer sur **Appairer** sur une enceinte déjà
   appairée refait seulement le "trust", sans refaire tout l'appairage
   (ou lancez `trust AA:BB:CC:DD:EE:FF` dans `bluetoothctl`).
 - **L'appairage échoue depuis la page d'appairage** : vérifiez que
-  l'enceinte est en mode appairage *au moment où vous cliquez sur Pair*
+  l'enceinte est en mode appairage *au moment où vous cliquez sur Appairer*
   (beaucoup d'enceintes en sortent au bout d'une ou deux minutes), proche
   de l'hôte, et déconnectée de tout téléphone. Les enceintes qui
   demandent un code PIN ne peuvent pas être appairées depuis la page :
@@ -475,7 +489,10 @@ Supervisor : il n'est pas joignable depuis votre réseau local.
   l'appairage échoue quand même avec `AuthenticationTimeout`, l'enceinte
   attend probablement quelque chose auquel la page ne peut pas répondre,
   comme un code PIN. Le message d'erreur affiché sur la page, ainsi que l'onglet Journal de
-  l'add-on, indiquent la raison remontée par le Bluetooth.
+  l'add-on, indiquent la raison remontée par le Bluetooth. Si une enceinte
+  qui fonctionnait ne se reconnecte plus du tout, cliquez sur **Oublier**
+  sur sa carte, mettez-la en mode appairage et cliquez de nouveau sur
+  **Appairer**.
 - **Le panneau Bluetooth Audio ne s'ouvre pas ou affiche une erreur** :
   cherchez une ligne `Starting the pairing web UI` dans l'onglet Journal
   de l'add-on. Si une erreur sur l'adresse ou le port ingress apparaît à

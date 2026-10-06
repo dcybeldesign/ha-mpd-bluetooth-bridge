@@ -41,7 +41,9 @@ original MPD bridge available as an optional second output.
   served by busybox `httpd`, with shell
   scripts calling `bluetoothctl`. It scans for Bluetooth Classic audio
   devices, pairs and trusts them, and writes the speaker you pick into
-  the add-on's own configuration through the Supervisor API.
+  the add-on's own configuration through the Supervisor API. It can
+  also forget a speaker, or pause one so another device can use it, see
+  [Letting another device use a speaker](#letting-another-device-use-a-speaker-pause).
 - A background loop checks the Bluetooth connection every
   `reconnect_interval` seconds (default 30s) and reconnects automatically
   if the speaker drops (sleep mode, out of range, etc.).
@@ -122,6 +124,13 @@ Home Assistant. The add-on saves the speaker into its own configuration
 [Native media_player output](#native-media_player-output-dlnaupnp). For
 another speaker, pair it the same way and click **Add as extra** instead,
 see [Multiple speakers](#multiple-speakers).
+
+**Managing your speakers later.** The **Configured speakers** section at
+the top of the page lists the speakers the add-on uses, with their
+status. **Forget** unpairs a speaker from the host (to pair it again
+from scratch, click **Pair** once it is in pairing mode again), and
+**Pause** lets another device use it for a while, see
+[Letting another device use a speaker](#letting-another-device-use-a-speaker-pause).
 
 ### Manual pairing (fallback)
 
@@ -432,7 +441,9 @@ than the Supervisor's ingress proxy: it isn't reachable from your LAN.
   `AuthenticationTimeout`, the speaker is probably waiting for something
   the page can't answer, such as a PIN code. The error
   shown on the page, and the add-on's Log tab, include the reason
-  reported by Bluetooth.
+  reported by Bluetooth. If a speaker that used to work no longer
+  reconnects at all, click **Forget** on its card, put it in pairing
+  mode and click **Pair** again.
 - **The Bluetooth Audio panel doesn't open, or shows an error**: look for
   a `Starting the pairing web UI` line in the add-on's Log tab. If
   there's an error about the ingress address/port instead, restart the
