@@ -14,7 +14,7 @@ name: "Bluetooth Audio Bridge"
 # Ancien nom : "Bluetooth Speaker MPD Bridge" (ancien nom encore avant :
 # "MPD JBL Bridge").
 
-version: "2.4.2"
+version: "2.4.3"
 # Version de l'add-on. À incrémenter à chaque modification si on veut
 # que le Supervisor propose une "mise à jour" plus tard.
 # Bump en 2.0.0 : changement de nom/slug (rupture de compatibilité pour
@@ -48,6 +48,12 @@ version: "2.4.2"
 # branche `fix/issue-9-initial-volume` avant merge dans master : JZ-B5W2,
 # valeur par défaut (inchangée) puis `renderer_volume` à 50 avec cycle de
 # déconnexion/reconnexion.
+# Bump en 2.4.3 (2026-10-06) : la page d'appairage répond d'elle-même aux
+# demandes de confirmation Secure Simple Pairing (voir CHANGELOG, GitHub
+# issue #7), son message d'erreur AuthenticationTimeout/AuthenticationFailed
+# est moins trompeur, et un bouton Forget apparaît sur les enceintes déjà
+# configurées. Branches `fix/issue-7-ssp-confirmation` (banc de test à vide,
+# puis non-régression sur la JZ-B5W2) et `feature/forget-configured-speaker`.
 
 slug: "bluetooth_audio_bridge"
 # Identifiant technique unique de l'add-on (utilisé dans les URLs internes,

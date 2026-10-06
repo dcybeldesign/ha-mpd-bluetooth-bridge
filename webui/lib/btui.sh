@@ -366,7 +366,7 @@ job_scan() {
 }
 
 job_pair() {
-    local mac="$1" info reason
+    local mac="$1" info reason hint
     # Jamais de "pair" sur un appareil déjà appairé : selon la version de
     # bluetoothctl, ça peut d'abord SUPPRIMER l'appairage existant. Un
     # appareil appairé mais pas "trusted" passe directement à l'étape trust.
@@ -376,7 +376,17 @@ job_pair() {
         if ! bt_is_paired "${mac}"; then
             reason=$(grep -o 'org\.bluez\.Error\.[A-Za-z]*' "${BTUI_SESSION_LOG}" | tail -n 1) || true
             echo "[pairing web UI] Pairing with ${mac} failed${reason:+ (${reason})}." >&2
-            job_set error "Pairing with ${mac} failed${reason:+ (${reason})}. Put the speaker in pairing mode, keep it close to the host and try again. Speakers that ask for a PIN code must be paired manually (see the add-on documentation)."
+            # Un échec d'authentification n'est pas forcément un problème de
+            # portée ou de mode appairage : l'enceinte peut attendre une
+            # confirmation ou un code PIN auquel la page n'a pas pu répondre
+            # (GitHub issue #7, où le conseil habituel orientait à tort).
+            hint=""
+            case "${reason}" in
+                *AuthenticationTimeout* | *AuthenticationFailed*)
+                    hint=" If the speaker was already in pairing mode and close, it may be waiting for a confirmation or PIN code that this page could not answer."
+                    ;;
+            esac
+            job_set error "Pairing with ${mac} failed${reason:+ (${reason})}. Put the speaker in pairing mode, keep it close to the host and try again.${hint} Speakers that ask for a PIN code must be paired manually (see the add-on documentation)."
             return 0
         fi
     fi

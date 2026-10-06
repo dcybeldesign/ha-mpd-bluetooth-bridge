@@ -399,7 +399,11 @@ than the Supervisor's ingress proxy: it isn't reachable from your LAN.
   pairing mode *when you click Pair* (many speakers leave pairing mode
   after a minute or two), close to the host, and not connected to a
   phone. Speakers that ask for a PIN code can't be paired from the page:
-  use [Manual pairing (fallback)](#manual-pairing-fallback). The error
+  use [Manual pairing (fallback)](#manual-pairing-fallback). Speakers that
+  only ask to confirm a number (Secure Simple Pairing) are confirmed
+  automatically by the page since 2.4.3. If pairing still fails with
+  `AuthenticationTimeout`, the speaker is probably waiting for something
+  the page can't answer, such as a PIN code. The error
   shown on the page, and the add-on's Log tab, include the reason
   reported by Bluetooth.
 - **The Bluetooth Audio panel doesn't open, or shows an error**: look for

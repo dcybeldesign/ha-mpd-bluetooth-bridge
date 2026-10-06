@@ -439,8 +439,12 @@ Supervisor : il n'est pas joignable depuis votre réseau local.
   (beaucoup d'enceintes en sortent au bout d'une ou deux minutes), proche
   de l'hôte, et déconnectée de tout téléphone. Les enceintes qui
   demandent un code PIN ne peuvent pas être appairées depuis la page :
-  utilisez l'[appairage manuel](#appairage-manuel-solution-de-repli). Le
-  message d'erreur affiché sur la page, ainsi que l'onglet Journal de
+  utilisez l'[appairage manuel](#appairage-manuel-solution-de-repli). Les
+  enceintes qui demandent seulement de confirmer un nombre (Secure Simple
+  Pairing) sont confirmées automatiquement par la page depuis la 2.4.3. Si
+  l'appairage échoue quand même avec `AuthenticationTimeout`, l'enceinte
+  attend probablement quelque chose auquel la page ne peut pas répondre,
+  comme un code PIN. Le message d'erreur affiché sur la page, ainsi que l'onglet Journal de
   l'add-on, indiquent la raison remontée par le Bluetooth.
 - **Le panneau Bluetooth Audio ne s'ouvre pas ou affiche une erreur** :
   cherchez une ligne `Starting the pairing web UI` dans l'onglet Journal

@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.4.3
+- The pairing page now confirms Secure Simple Pairing prompts by itself.
+  Some speakers ask the host to confirm a number even though the page
+  registers as a headless device, and the page never answered, so pairing
+  ended with `AuthenticationTimeout`. The page now watches the pairing
+  session and answers "yes" when a confirmation is requested. A PIN code
+  request is still not answered and still needs the manual procedure.
+  The page's error message for `AuthenticationTimeout` and
+  `AuthenticationFailed` now also mentions that the speaker may be waiting
+  for a confirmation or PIN code, and the README troubleshooting section
+  explains it. Reported in
+  [#7](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/issues/7).
+- Added a **Forget** button on each speaker in the pairing page's
+  "Configured speakers" section, so a configured speaker can be unpaired
+  from the page without scanning first. It warns you when the speaker is
+  still configured in the add-on. Suggested while discussing
+  [#8](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/issues/8).
+
 ## 2.4.2
 - Added a **`renderer_volume`** option (1-100, default `100`) setting the
   volume level each speaker's `media_player` starts at, as shown by its
