@@ -300,6 +300,31 @@ If you add a speaker while the add-on is already running and its
 the add-on) — this forces a fresh SSDP scan and reliably surfaced it in
 our testing.
 
+## Letting another device use a speaker (Pause)
+
+A Bluetooth speaker usually talks to one source at a time, and the
+add-on keeps reconnecting to its speakers. To play something from your
+phone on a speaker without unpairing it from the host, use **Pause** on
+the speaker's card in the pairing page:
+
+1. Click **Pause** and enter after how many minutes the add-on should
+   reconnect by itself, or `0` to wait until you click **Resume**.
+2. The add-on disconnects the speaker, keeps its pairing, and refuses to
+   reconnect to it. Its `media_player` becomes unavailable meanwhile.
+3. Connect your phone to the speaker (the phone has to be paired with it
+   already) and play.
+4. When you're done, disconnect the phone (turn its Bluetooth off, or
+   disconnect from the speaker) and click **Resume**, or wait for the
+   timer. The add-on reconnects right away, and the `media_player` comes
+   back within about half a minute.
+
+Good to know: the speaker must be free for the add-on to reconnect, so
+if it stays connected to your phone, the add-on keeps retrying and
+succeeds once the phone lets go. A pause never survives an add-on
+restart: restarting the add-on (or Home Assistant) ends it. Some
+speakers reconnect to the last device they knew when switched on, so
+pausing is the reliable way to keep the host from grabbing it back.
+
 ## Voice PE
 
 **What works today**: since the native `media_player` entity exists,

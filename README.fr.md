@@ -330,6 +330,34 @@ un **redémarrage complet de Home Assistant Core** (Paramètres > Système >
 Redémarrer, pas seulement l'add-on) — ça force un nouveau scan SSDP et a
 fiablement fait apparaître l'entité lors de nos tests.
 
+## Laisser un autre appareil utiliser une enceinte (Pause)
+
+Une enceinte Bluetooth ne parle en général qu'à une source à la fois, et
+l'add-on reconnecte sans cesse ses enceintes. Pour jouer quelque chose
+depuis votre téléphone sur une enceinte sans la désappairer de l'hôte,
+utilisez **Pause** sur la carte de l'enceinte dans la page d'appairage :
+
+1. Cliquez sur **Pause** et indiquez au bout de combien de minutes l'add-on
+   doit se reconnecter tout seul, ou `0` pour attendre que vous cliquiez
+   sur **Resume**.
+2. L'add-on déconnecte l'enceinte, garde son appairage et refuse de se
+   reconnecter à elle. Son `media_player` devient indisponible pendant ce
+   temps.
+3. Connectez votre téléphone à l'enceinte (il doit déjà être appairé avec
+   elle) et lancez la lecture.
+4. Quand vous avez fini, déconnectez le téléphone (coupez son Bluetooth ou
+   déconnectez-le de l'enceinte) et cliquez sur **Resume**, ou attendez la
+   minuterie. L'add-on se reconnecte aussitôt, et le `media_player`
+   revient en une trentaine de secondes environ.
+
+Bon à savoir : l'enceinte doit être libre pour que l'add-on se
+reconnecte ; si elle reste connectée à votre téléphone, l'add-on réessaie
+et y arrive dès que le téléphone la lâche. Une pause ne survit jamais à un
+redémarrage de l'add-on : redémarrer l'add-on (ou Home Assistant) y met
+fin. Certaines enceintes se reconnectent au dernier appareil connu
+quand on les allume, la pause est donc le moyen fiable d'empêcher l'hôte
+de la reprendre.
+
 ## Voice PE
 
 **Ce qui marche aujourd'hui** : puisque l'entité `media_player` native

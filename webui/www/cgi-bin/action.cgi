@@ -140,6 +140,12 @@ case "${action}" in
             rm -f "${BTUI_PAUSE_DIR}/${mac}"
             http_error "500 Internal Server Error" "Could not release ${mac}."
         fi
+        # La déconnexion suit le blocage avec un léger retard : rafraîchir la
+        # liste tout de suite la montrerait encore connectée (comme pour Forget).
+        for _ in 1 2 3 4; do
+            grep -q "^[[:space:]]*Connected: yes" <<<"$(bt_info "${mac}")" || break
+            sleep 1
+        done
         devices_update "${mac}"
         http_json "200 OK" '{"ok":true}'
         ;;
@@ -156,6 +162,12 @@ case "${action}" in
         # avant de répondre. Si l'enceinte est encore connectée à un autre
         # appareil, la boucle réessaiera d'elle-même.
         (timeout 20 bluetoothctl connect "${mac}" </dev/null >/dev/null 2>&1 &)
+        # Même raison que pour la pause : on attend la connexion (huit
+        # secondes au plus) avant de rafraîchir la liste.
+        for _ in 1 2 3 4 5 6 7 8; do
+            grep -q "^[[:space:]]*Connected: yes" <<<"$(bt_info "${mac}")" && break
+            sleep 1
+        done
         devices_update "${mac}"
         http_json "200 OK" '{"ok":true}'
         ;;
