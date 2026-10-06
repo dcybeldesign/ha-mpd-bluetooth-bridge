@@ -95,7 +95,9 @@ starts in *setup mode*, with only its pairing page running.
 **Open Web UI**. To get a **Bluetooth Audio** shortcut in the Home
 Assistant sidebar instead, turn on **Show in sidebar** on that same tab:
 it's off by default. The page is only available to Home Assistant
-administrators.
+administrators. It is shown in English or French depending on your
+browser's language (English if yours isn't available), and adding
+`?lang=fr` or `?lang=en` to its address forces one.
 
 **3. Put your speaker into pairing mode.**
 This varies by speaker model, usually holding the power or Bluetooth

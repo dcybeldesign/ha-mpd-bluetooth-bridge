@@ -11,6 +11,13 @@
   See [Letting another device use a speaker](README.md#letting-another-device-use-a-speaker-pause).
   Suggested in
   [#8](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/issues/8).
+- The pairing page now follows your browser's language: French or English
+  (English when yours isn't available). Texts come from built-in
+  dictionaries, nothing is sent to an online translation service, and the
+  page's messages are translated too, including pairing errors. Add
+  `?lang=fr` or `?lang=en` to the page's address to force a language.
+  Another language can be added by contribution with a new dictionary at
+  the top of `webui/www/index.html`.
 
 ## 2.4.3
 - The pairing page now confirms Secure Simple Pairing prompts by itself.

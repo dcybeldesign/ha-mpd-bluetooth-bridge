@@ -104,7 +104,9 @@ page d'appairage.
 cliquez sur **Ouvrir l'interface utilisateur web**. Pour avoir plutôt un
 raccourci **Bluetooth Audio** dans la barre latérale de Home Assistant,
 activez **Afficher dans la barre latérale** dans ce même onglet : l'option
-est désactivée par défaut. La page n'est accessible qu'aux administrateurs
+est désactivée par défaut. La page s'affiche en français ou en anglais selon
+la langue de votre navigateur (en anglais si la vôtre n'est pas disponible),
+et ajouter `?lang=fr` ou `?lang=en` à son adresse impose une langue. La page n'est accessible qu'aux administrateurs
 de Home Assistant, et elle est en anglais, comme les journaux de l'add-on.
 
 **3. Mettez votre enceinte en mode appairage.**

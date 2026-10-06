@@ -60,7 +60,8 @@ version: "2.5.0"
 # téléphone puisse la prendre. Testé sur la JZ-B5W2 depuis la branche
 # `feature/pause-speaker` : pause minutée avec reprise automatique, pause
 # sans limite avec Resume, téléphone connecté et lecture pendant la pause,
-# redémarrage de l'add-on pendant une pause (le blocage est levé).
+# redémarrage de l'add-on pendant une pause (le blocage est levé). La page
+# d'appairage est aussi traduite (français ou anglais selon le navigateur).
 
 slug: "bluetooth_audio_bridge"
 # Identifiant technique unique de l'add-on (utilisé dans les URLs internes,
