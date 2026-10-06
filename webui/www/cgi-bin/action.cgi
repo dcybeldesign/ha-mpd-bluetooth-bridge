@@ -91,6 +91,13 @@ case "${action}" in
         require_mac
         require_idle
         bluetoothctl remove "${mac}" >/dev/null 2>&1 || true
+        # BlueZ met un instant à retirer l'appareil : rafraîchir la liste tout
+        # de suite la laissait afficher l'enceinte comme encore appairée et
+        # connectée (constaté sur la JZ le 2026-10-06, 2.4.3).
+        for _ in 1 2 3 4; do
+            bt_is_known "${mac}" || break
+            sleep 1
+        done
         devices_update "${mac}"
         if bt_is_paired "${mac}"; then
             http_error "500 Internal Server Error" "Could not forget ${mac}."
