@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.5.0
+- Added **Pause** and **Resume** for each configured speaker in the pairing
+  page, so another device, such as a phone already paired with the speaker,
+  can use it without unpairing it from the host. Pause disconnects the
+  speaker, keeps its pairing, refuses any reconnection from it and stops
+  the add-on from reconnecting it; its `media_player` becomes unavailable
+  meanwhile. Choose after how many minutes the add-on reconnects by itself,
+  or `0` to wait for **Resume**. A pause never survives an add-on restart.
+  See [Letting another device use a speaker](README.md#letting-another-device-use-a-speaker-pause).
+  Suggested in
+  [#8](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/issues/8).
+
 ## 2.4.3
 - The pairing page now confirms Secure Simple Pairing prompts by itself.
   Some speakers ask the host to confirm a number even though the page

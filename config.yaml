@@ -14,7 +14,7 @@ name: "Bluetooth Audio Bridge"
 # Ancien nom : "Bluetooth Speaker MPD Bridge" (ancien nom encore avant :
 # "MPD JBL Bridge").
 
-version: "2.4.3"
+version: "2.5.0"
 # Version de l'add-on. À incrémenter à chaque modification si on veut
 # que le Supervisor propose une "mise à jour" plus tard.
 # Bump en 2.0.0 : changement de nom/slug (rupture de compatibilité pour
@@ -54,6 +54,13 @@ version: "2.4.3"
 # est moins trompeur, et un bouton Forget apparaît sur les enceintes déjà
 # configurées. Branches `fix/issue-7-ssp-confirmation` (banc de test à vide,
 # puis non-régression sur la JZ-B5W2) et `feature/forget-configured-speaker`.
+# Bump en 2.5.0 (2026-10-06) : Pause et Resume par enceinte dans la page
+# d'appairage (voir CHANGELOG, GitHub issue #8) : l'enceinte est bloquée côté
+# BlueZ et la boucle de surveillance ne la reconnecte plus, pour qu'un
+# téléphone puisse la prendre. Testé sur la JZ-B5W2 depuis la branche
+# `feature/pause-speaker` : pause minutée avec reprise automatique, pause
+# sans limite avec Resume, téléphone connecté et lecture pendant la pause,
+# redémarrage de l'add-on pendant une pause (le blocage est levé).
 
 slug: "bluetooth_audio_bridge"
 # Identifiant technique unique de l'add-on (utilisé dans les URLs internes,
