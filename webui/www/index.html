@@ -356,7 +356,8 @@ function renderSpeakers(locked) {
         el('div', { class: 'mac' }, speaker.mac),
         badges(speaker)),
       el('div', { class: 'actions' },
-        (!speaker.paired || !speaker.trusted) && button('Pair', 'primary', locked, () => pair(speaker)))));
+        (!speaker.paired || !speaker.trusted) && button('Pair', 'primary', locked, () => pair(speaker)),
+        speaker.known && button('Forget', 'danger', locked, () => forget(speaker, true)))));
   }
   box.append(list);
 }
