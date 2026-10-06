@@ -29,6 +29,12 @@ BTUI_JOB_FILE="${BTUI_STATE_DIR}/job.json"
 BTUI_DEVICES_FILE="${BTUI_STATE_DIR}/devices.json"
 BTUI_SESSION_LOG="${BTUI_STATE_DIR}/bluetoothctl.log"
 BTUI_LOCK_DIR="${BTUI_STATE_DIR}/lock"
+BTUI_PAUSE_DIR="${BTUI_STATE_DIR}/paused"
+# Un fichier par enceinte en pause (nom = adresse MAC en majuscules), dont le
+# contenu est l'heure de fin en secondes epoch, ou 0 pour "jusqu'à la reprise
+# manuelle". Lu par la boucle de surveillance de run.sh (monitor_speaker, qui
+# a le même chemin en dur) pour ne pas reconnecter l'enceinte. Dans /tmp comme
+# le reste : une pause ne survit pas à un redémarrage de l'add-on.
 
 BTUI_OPTIONS_FILE="/data/options.json"
 # Fichier où le Supervisor écrit les options validées de l'add-on — celui
@@ -136,6 +142,21 @@ info_field() {
 
 bt_is_known() {
     grep -q "Paired:" <<<"$(bt_info "$1")"
+}
+
+# pause_info <mac> — état de pause en JSON : {paused, paused_until}.
+# paused_until vaut 0 sans heure de fin. Une pause dont l'heure est passée
+# est donnée comme terminée sans attendre que la boucle de run.sh nettoie.
+pause_info() {
+    local file="${BTUI_PAUSE_DIR}/${1^^}" ends_at=0 paused=false
+    if [ -f "${file}" ]; then
+        ends_at=$(cat "${file}" 2>/dev/null) || ends_at=0
+        [[ "${ends_at}" =~ ^[0-9]+$ ]] || ends_at=0
+        if [ "${ends_at}" -eq 0 ] || [ "${ends_at}" -gt "$(date +%s)" ]; then
+            paused=true
+        fi
+    fi
+    printf '{"paused":%s,"paused_until":%s}' "${paused}" "${ends_at}"
 }
 
 bt_is_paired() {

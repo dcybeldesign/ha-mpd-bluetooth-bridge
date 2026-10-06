@@ -24,7 +24,8 @@ options=$(options_json)
 # speaker_json <primary|extra> <mac> <nom configuré>
 speaker_json() {
     bt_device_json "${2^^}" | jq -c --arg role "$1" --arg name "$3" \
-        '. + {role: $role, device_name: .name, name: $name}'
+        --argjson pause "$(pause_info "${2^^}")" \
+        '. + {role: $role, device_name: .name, name: $name} + $pause'
 }
 
 speakers=()

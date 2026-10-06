@@ -136,7 +136,7 @@
     <h2 id="dialog-title"></h2>
     <p id="dialog-text" class="muted"></p>
     <label id="dialog-label" hidden>
-      Name shown in Home Assistant
+      <span id="dialog-label-text">Name shown in Home Assistant</span>
       <input id="dialog-input" maxlength="64" pattern='[^"\\]+' title="Quotes and backslashes are not allowed">
     </label>
     <div class="buttons">
@@ -246,15 +246,23 @@ async function act(payload) {
 // Boîte de dialogue maison plutôt que prompt()/confirm() : ces derniers ne
 // sont pas toujours affichés dans les applications mobiles Home Assistant.
 // Résout avec null si annulé, sinon avec le nom saisi ('' sans champ).
-function ask({ title, text, input = null, ok = 'OK', danger = false }) {
+function ask({
+  title, text, input = null, ok = 'OK', danger = false,
+  label: labelText = 'Name shown in Home Assistant',
+  pattern = '[^"\\\\]+',
+  hint = 'Quotes and backslashes are not allowed',
+}) {
   const dialog = document.getElementById('dialog');
   const label = document.getElementById('dialog-label');
   const field = document.getElementById('dialog-input');
   const okButton = document.getElementById('dialog-ok');
   document.getElementById('dialog-title').textContent = title;
   document.getElementById('dialog-text').textContent = text;
+  document.getElementById('dialog-label-text').textContent = labelText;
   label.hidden = input === null;
   field.required = input !== null;
+  field.pattern = pattern;
+  field.title = hint;
   field.value = input ?? '';
   okButton.textContent = ok;
   okButton.className = danger ? 'danger' : 'primary';
@@ -297,6 +305,31 @@ async function forget(device, configured) {
   if (configured) text += ' It is still configured in this add-on: remove it from the Configuration tab too if you no longer use it.';
   const confirmed = await ask({ title: `Forget ${device.name || device.mac}?`, text, ok: 'Forget', danger: true });
   if (confirmed !== null) act({ action: 'forget', mac: device.mac });
+}
+
+async function pauseSpeaker(speaker) {
+  const name = speaker.name || speaker.device_name || speaker.mac;
+  const text = `The add-on lets go of ${name} and refuses to reconnect to it, so another device, such as a phone already paired with the speaker, can connect to it. Its media_player becomes unavailable meanwhile. Enter after how many minutes the add-on should reconnect by itself, or 0 to wait until you click Resume.`;
+  const minutes = await ask({
+    title: `Pause ${name}?`,
+    text,
+    input: '60',
+    label: 'Minutes (0 = until you click Resume)',
+    pattern: '[0-9]{1,4}',
+    hint: 'A whole number from 0 to 1440',
+    ok: 'Pause',
+  });
+  if (minutes !== null) act({ action: 'pause', mac: speaker.mac, minutes: Number(minutes) });
+}
+
+function resumeSpeaker(speaker) {
+  act({ action: 'resume', mac: speaker.mac });
+}
+
+function pausedLabel(speaker) {
+  if (!speaker.paused_until) return 'Paused';
+  const time = new Date(speaker.paused_until * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `Paused until ${time}`;
 }
 
 function renderBanner() {
@@ -355,9 +388,13 @@ function renderSpeakers(locked) {
           speaker.name || speaker.device_name || speaker.mac, ' ',
           el('span', { class: 'badge role' }, speaker.role === 'primary' ? 'Primary' : 'Extra')),
         el('div', { class: 'mac' }, speaker.mac),
-        badges(speaker)),
+        badges(speaker),
+        speaker.paused && el('div', { class: 'badges' }, el('span', { class: 'badge role' }, pausedLabel(speaker)))),
       el('div', { class: 'actions' },
         (!speaker.paired || !speaker.trusted) && button('Pair', 'primary', locked, () => pair(speaker)),
+        speaker.paused
+          ? button('Resume', 'primary', locked, () => resumeSpeaker(speaker))
+          : speaker.known && speaker.paired && button('Pause', '', locked, () => pauseSpeaker(speaker)),
         speaker.known && button('Forget', 'danger', locked, () => forget(speaker, true)))));
   }
   box.append(list);

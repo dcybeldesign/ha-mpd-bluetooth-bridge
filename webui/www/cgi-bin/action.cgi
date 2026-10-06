@@ -56,6 +56,16 @@ require_name() {
     fi
 }
 
+# require_configured — l'adresse doit être celle de l'enceinte principale ou
+# d'une enceinte supplémentaire : on ne met en pause que ce que l'add-on gère.
+require_configured() {
+    if ! jq -e --arg mac "${mac}" \
+        '[.bluetooth_mac // empty, ((.extra_speakers // [])[] | .mac // empty)] | map(ascii_upcase) | index($mac) != null' \
+        >/dev/null <<<"$(options_json)"; then
+        http_error "404 Not Found" "This speaker is not configured in the add-on."
+    fi
+}
+
 require_idle() {
     if job_alive; then
         http_error "409 Conflict" "Another Bluetooth operation is still running, wait for it to finish."
@@ -91,6 +101,7 @@ case "${action}" in
         require_mac
         require_idle
         bluetoothctl remove "${mac}" >/dev/null 2>&1 || true
+        rm -f "${BTUI_PAUSE_DIR}/${mac}"
         # BlueZ met un instant à retirer l'appareil : rafraîchir la liste tout
         # de suite la laissait afficher l'enceinte comme encore appairée et
         # connectée (constaté sur la JZ le 2026-10-06, 2.4.3).
@@ -102,6 +113,50 @@ case "${action}" in
         if bt_is_paired "${mac}"; then
             http_error "500 Internal Server Error" "Could not forget ${mac}."
         fi
+        http_json "200 OK" '{"ok":true}'
+        ;;
+
+    pause)
+        # Libère l'enceinte pour qu'un autre appareil (un téléphone déjà
+        # appairé de son côté) puisse s'y connecter : "block" la déconnecte
+        # aussitôt, garde l'appairage, et fait refuser toute reconnexion
+        # venant d'elle (vérifié sur matériel le 2026-10-06). La boucle de
+        # run.sh s'arrête de la reconnecter tant que le fichier de pause existe.
+        require_mac
+        require_configured
+        require_idle
+        minutes=$(jq -r '.minutes // 0' <<<"${BTUI_BODY}")
+        if ! [[ "${minutes}" =~ ^[0-9]+$ ]] || ((minutes > 1440)); then
+            http_error "400 Bad Request" "Minutes must be a whole number from 0 to 1440."
+        fi
+        deadline=0
+        if ((minutes > 0)); then
+            deadline=$(($(date +%s) + minutes * 60))
+        fi
+        mkdir -p "${BTUI_PAUSE_DIR}"
+        echo "${deadline}" >"${BTUI_PAUSE_DIR}/${mac}"
+        bluetoothctl block "${mac}" >/dev/null 2>&1 || true
+        if ! grep -q "^[[:space:]]*Blocked: yes" <<<"$(bt_info "${mac}")"; then
+            rm -f "${BTUI_PAUSE_DIR}/${mac}"
+            http_error "500 Internal Server Error" "Could not release ${mac}."
+        fi
+        devices_update "${mac}"
+        http_json "200 OK" '{"ok":true}'
+        ;;
+
+    resume)
+        require_mac
+        require_configured
+        require_idle
+        rm -f "${BTUI_PAUSE_DIR}/${mac}"
+        bluetoothctl unblock "${mac}" >/dev/null 2>&1 || true
+        # Reconnexion tout de suite plutôt que d'attendre le prochain passage
+        # de la boucle de surveillance (30 s par défaut). Détachée, avec les
+        # trois flux redirigés : sinon httpd attendrait la fin de la commande
+        # avant de répondre. Si l'enceinte est encore connectée à un autre
+        # appareil, la boucle réessaiera d'elle-même.
+        (timeout 20 bluetoothctl connect "${mac}" </dev/null >/dev/null 2>&1 &)
+        devices_update "${mac}"
         http_json "200 OK" '{"ok":true}'
         ;;
 

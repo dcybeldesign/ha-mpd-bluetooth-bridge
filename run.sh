@@ -311,6 +311,16 @@ ensure_audio_sink() {
     # reset périodique intrusif à chaque passage de la boucle.
 }
 
+# Aucune pause ne doit survivre à un redémarrage : /tmp est vide au
+# démarrage du conteneur, mais le blocage Bluetooth posé par la page
+# d'appairage (bluetoothctl block) est conservé par BlueZ côté hôte. On le
+# lève donc pour toutes les enceintes configurées, sinon une enceinte mise en
+# pause juste avant un redémarrage resterait refusée sans aucune trace.
+rm -rf /tmp/btui/paused
+for i in "${!SPEAKERS_MAC[@]}"; do
+    bluetoothctl unblock "${SPEAKERS_MAC[i]}" >/dev/null 2>&1 || true
+done
+
 # On tente une première connexion avant même de démarrer MPD, pour que
 # le sink existe déjà quand MPD essaiera de s'y attacher.
 # Boucle sur SPEAKERS_MAC[]/SPEAKERS_NAME[] (2.3.0, multi-enceintes) : avec
@@ -357,6 +367,26 @@ monitor_speaker() {
         grep -q "Connected: yes" <<<"${i}"
     }
 
+    # Pause demandée depuis la page d'appairage (GitHub issue #8) : un fichier
+    # /tmp/btui/paused/<MAC en majuscules>, voir BTUI_PAUSE_DIR dans
+    # webui/lib/btui.sh, contenant l'heure de fin en secondes epoch ou 0 pour
+    # "jusqu'à la reprise manuelle". La page a déjà bloqué l'enceinte
+    # (bluetoothctl block) : ici on arrête seulement de la reconnecter. Une
+    # pause arrivée à échéance est levée ici, avec le déblocage.
+    is_paused() {
+        local file="/tmp/btui/paused/${mac^^}" ends_at
+        [ -f "${file}" ] || return 1
+        ends_at=$(cat "${file}" 2>/dev/null) || ends_at=0
+        [[ "${ends_at}" =~ ^[0-9]+$ ]] || ends_at=0
+        if [ "${ends_at}" -gt 0 ] && [ "$(date +%s)" -ge "${ends_at}" ]; then
+            rm -f "${file}"
+            bluetoothctl unblock "${mac}" >/dev/null 2>&1 || true
+            bashio::log.info "The pause of ${name} is over, reconnecting." || true
+            return 1
+        fi
+        return 0
+    }
+
     start_renderer() {
         # Corrige la GitHub issue #6 : avant cette version, gmediarender
         # tournait en continu quelle que soit la connexion Bluetooth, donc
@@ -384,7 +414,7 @@ monitor_speaker() {
         if [ -n "${renderer_pid}" ] && kill -0 "${renderer_pid}" 2>/dev/null; then
             kill "${renderer_pid}" 2>/dev/null || true
             wait "${renderer_pid}" 2>/dev/null || true
-            bashio::log.warning "Stopped the DLNA renderer for ${name} while disconnected." || true
+            bashio::log.warning "Stopped the DLNA renderer for ${name} while disconnected or paused." || true
         fi
         renderer_pid=""
     }
@@ -401,6 +431,13 @@ monitor_speaker() {
 
     while true; do
         sleep "${RECONNECT_INTERVAL}"
+        # En pause : ni reconnexion, ni renderer (l'entité passe donc
+        # "indisponible", comme pour une enceinte éteinte), ni vérification
+        # du sink PulseAudio qui n'existe plus tant que l'enceinte est lâchée.
+        if is_paused; then
+            stop_renderer
+            continue
+        fi
         # Sortie capturée puis cherchée (2.4.0, voir ensure_audio_sink) : le
         # pipe "bluetoothctl info | grep -q" sous pipefail signalait une
         # enceinte pourtant connectée comme déconnectée toutes les ~30 s,
