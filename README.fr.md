@@ -138,8 +138,9 @@ reconnexion automatique de l'add-on.
 Home Assistant. L'add-on enregistre l'enceinte dans sa propre
 configuration (`bluetooth_mac` et `speaker_name`) et redémarre tout seul ;
 le `media_player` natif apparaît ensuite comme décrit dans
-[Sortie media_player native](#sortie-media_player-native-dlnaupnp). Pour
-une autre enceinte, appairez-la de la même façon puis cliquez plutôt sur
+[Sortie media_player native](#sortie-media_player-native-dlnaupnp). Si
+une autre enceinte était déjà la principale, elle reste configurée comme
+enceinte supplémentaire. Pour une autre enceinte, appairez-la de la même façon puis cliquez plutôt sur
 **Ajouter comme supplémentaire**, voir [Plusieurs enceintes](#plusieurs-enceintes).
 
 **Gérer vos enceintes ensuite.** La section **Enceintes configurées**, en
@@ -339,6 +340,9 @@ définissez une autre enceinte comme principale, l'entité existante passe
 sur cette enceinte et peut prendre son nom. Les enceintes supplémentaires
 écoutent chacune sur un port fixe dérivé de leur adresse MAC, donc leurs
 entités restent attachées à elles quel que soit l'ordre de la liste.
+L'enceinte qui était principale auparavant n'est pas supprimée : elle reste
+configurée comme enceinte supplémentaire. Si vous n'en voulez plus,
+retirez-la de `extra_speakers` dans la configuration de l'add-on.
 
 Si vous ajoutez une enceinte pendant que l'add-on tourne déjà et que son
 entité `media_player` n'apparaît pas au bout de quelques minutes, essayez

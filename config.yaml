@@ -14,7 +14,7 @@ name: "Bluetooth Audio Bridge"
 # Ancien nom : "Bluetooth Speaker MPD Bridge" (ancien nom encore avant :
 # "MPD JBL Bridge").
 
-version: "2.5.0"
+version: "2.5.1"
 # Version de l'add-on. À incrémenter à chaque modification si on veut
 # que le Supervisor propose une "mise à jour" plus tard.
 # Bump en 2.0.0 : changement de nom/slug (rupture de compatibilité pour
@@ -62,6 +62,9 @@ version: "2.5.0"
 # sans limite avec Resume, téléphone connecté et lecture pendant la pause,
 # redémarrage de l'add-on pendant une pause (le blocage est levé). La page
 # d'appairage est aussi traduite (français ou anglais selon le navigateur).
+# Bump en 2.5.1 (2026-10-07) : Set as primary garde l'ancienne principale
+# comme enceinte supplémentaire au lieu de la supprimer (voir CHANGELOG,
+# GitHub issue #8). Branche `fix/set-primary-keeps-previous`.
 
 slug: "bluetooth_audio_bridge"
 # Identifiant technique unique de l'add-on (utilisé dans les URLs internes,

@@ -203,8 +203,8 @@ const TRANSLATIONS = {
     'Set as primary speaker': 'Définir comme enceinte principale',
     'The add-on saves it to its configuration and restarts to start playing to this speaker.':
       "L'add-on l'enregistre dans sa configuration et redémarre pour jouer sur cette enceinte.",
-    'This replaces the current primary speaker, {name} ({mac}). {text}':
-      "Cela remplace l'enceinte principale actuelle, {name} ({mac}). {text}",
+    'The current primary speaker, {name} ({mac}), becomes an extra speaker. {text}':
+      "L'enceinte principale actuelle, {name} ({mac}), devient une enceinte supplémentaire. {text}",
     'Save and restart': 'Enregistrer et redémarrer',
     'Add as extra speaker': 'Ajouter comme enceinte supplémentaire',
     'It gets its own media_player in Home Assistant. The add-on saves it to its configuration and restarts.':
@@ -469,7 +469,7 @@ function pair(device) {
 async function setPrimary(device, primary) {
   let text = t('The add-on saves it to its configuration and restarts to start playing to this speaker.');
   if (primary && primary.mac !== device.mac) {
-    text = t('This replaces the current primary speaker, {name} ({mac}). {text}',
+    text = t('The current primary speaker, {name} ({mac}), becomes an extra speaker. {text}',
       { name: primary.name || primary.mac, mac: primary.mac, text });
   }
   const name = await ask({

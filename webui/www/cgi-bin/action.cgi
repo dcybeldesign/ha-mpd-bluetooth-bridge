@@ -7,7 +7,9 @@
 # - pair        : appairage + trust + connexion (en arrière-plan) ;
 # - forget      : supprime l'appairage d'un appareil ;
 # - set_primary : enregistre l'enceinte comme enceinte principale
-#                 (bluetooth_mac/speaker_name), puis redémarre l'add-on ;
+#                 (bluetooth_mac/speaker_name), l'ancienne principale
+#                 devenant une enceinte supplémentaire, puis redémarre
+#                 l'add-on ;
 # - add_extra   : l'ajoute à extra_speakers, puis redémarre l'add-on.
 # Toute donnée venant du navigateur est validée ici avant usage : adresse
 # MAC au format strict, nom sans caractère qui casserait la configuration.
@@ -176,13 +178,23 @@ case "${action}" in
         require_mac
         require_name
         require_idle
-        # Remplace l'enceinte principale ; si cette enceinte était déjà
-        # listée dans extra_speakers, elle en est retirée (sinon run.sh la
-        # connecterait deux fois, avec deux media_player identiques).
+        # Change l'enceinte principale. Si la nouvelle était déjà listée dans
+        # extra_speakers, elle en est retirée (sinon run.sh la connecterait
+        # deux fois, avec deux media_player identiques). L'ancienne
+        # principale devient une enceinte supplémentaire au lieu de
+        # disparaître de la configuration ; on la retire d'abord de
+        # extra_speakers au cas où elle y serait déjà, pour ne jamais créer
+        # de doublon.
         apply_and_restart "$(jq -c --arg mac "${mac}" --arg name "${name}" '
-            .bluetooth_mac = $mac
+            ((.bluetooth_mac // "") | ascii_upcase) as $old
+            | ((.speaker_name // "") | if . == "" then "Bluetooth Speaker" else . end) as $old_name
+            | .bluetooth_mac = $mac
             | .speaker_name = $name
-            | .extra_speakers = ((.extra_speakers // []) | map(select((.mac | ascii_upcase) != $mac)))
+            | .extra_speakers = (
+                ((.extra_speakers // [])
+                    | map(select((.mac | ascii_upcase) != $mac and (.mac | ascii_upcase) != $old)))
+                + (if $old != "" and $old != $mac then [{mac: $old, name: $old_name}] else [] end)
+            )
         ' <<<"$(options_json)")"
         ;;
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.5.1
+- **Set as primary** no longer drops the previous primary speaker. It stays
+  configured as an extra speaker, so changing the primary speaker in the
+  pairing page doesn't make another speaker vanish from **Configured
+  speakers**. The confirmation dialog says so. Until now the previous
+  primary was replaced and had to be scanned and added again. Reported in
+  [#8](https://github.com/dcybeldesign/ha-mpd-bluetooth-bridge/issues/8).
+
 ## 2.5.0
 - Added **Pause** and **Resume** for each configured speaker in the pairing
   page, so another device, such as a phone already paired with the speaker,

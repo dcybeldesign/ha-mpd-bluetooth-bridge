@@ -121,8 +121,9 @@ allows the add-on's automatic reconnection to work later.
 Home Assistant. The add-on saves the speaker into its own configuration
 (`bluetooth_mac` and `speaker_name`) and restarts by itself; the native
 `media_player` then shows up as described in
-[Native media_player output](#native-media_player-output-dlnaupnp). For
-another speaker, pair it the same way and click **Add as extra** instead,
+[Native media_player output](#native-media_player-output-dlnaupnp). If
+another speaker was already the primary one, it stays configured as an
+extra speaker. For another speaker, pair it the same way and click **Add as extra** instead,
 see [Multiple speakers](#multiple-speakers).
 
 **Managing your speakers later.** The **Configured speakers** section at
@@ -304,6 +305,9 @@ ties the entity to that address. If you set another speaker as primary,
 the existing entity switches to that speaker and can take its name.
 Extra speakers each listen on a fixed port derived from their MAC
 address, so their entities stay with them however the list is ordered.
+The speaker that was primary before is not dropped: it stays configured
+as an extra speaker. If you no longer want it, remove it from
+`extra_speakers` in the add-on configuration.
 
 If you add a speaker while the add-on is already running and its
 `media_player` entity doesn't show up after a few minutes, try a full
